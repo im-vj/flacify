@@ -22,7 +22,7 @@ jobs:
         with:
           flutter-version: '3.41.2'
           channel: 'stable'
-          cache: true  # cache Flutter SDK between runs
+          cache: true
 
       - name: Cache pub dependencies
         uses: actions/cache@v4
@@ -44,11 +44,10 @@ jobs:
 
       - name: Fix android config
         run: |
-          # Remove aapt2 override (not valid on GitHub runners)
           sed -i '/android.aapt2FromMavenOverride/d' android/gradle.properties
-          # Use compileSdk 35
           sed -i 's/compileSdk = 34/compileSdk = 35/' android/app/build.gradle.kts
           sed -i 's/targetSdk = 34/targetSdk = 35/' android/app/build.gradle.kts
+          sed -i 's/version "8.3.2"/version "8.6.0"/' android/settings.gradle.kts
 
       - name: Flutter pub get
         run: flutter pub get
@@ -57,6 +56,7 @@ jobs:
         if: github.event_name != 'pull_request'
         run: |
           echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > android/app/flacify-release.jks
+          cat android/app/flacify-release.jks | wc -c
           cat > android/key.properties << KEYEOF
           storePassword=${{ secrets.KEYSTORE_PASSWORD }}
           keyPassword=${{ secrets.KEY_PASSWORD }}
@@ -64,59 +64,25 @@ jobs:
           storeFile=flacify-release.jks
           KEYEOF
 
-      - name: Configure signing
+      - name: Setup release signing
         if: github.event_name != 'pull_request'
+        working-directory: android/app
         run: |
-          cat > android/app/build.gradle.kts << 'GRADLE'
-          plugins {
-              id("com.android.application")
-              id("kotlin-android")
-              id("dev.flutter.flutter-gradle-plugin")
+          cat >> build.gradle.kts << 'GRADLE'
+
+          // Release signing - appended by CI
+          android.signingConfigs.create("release") {
+              storeFile = file("flacify-release.jks")
+              storePassword = providers.gradleProperty("storePassword").orElse(System.getenv("STORE_PASSWORD") ?: "").get()
+              keyAlias = "flacify"
+              keyPassword = providers.gradleProperty("keyPassword").orElse(System.getenv("KEY_PASSWORD") ?: "").get()
           }
-          android {
-              namespace = "com.imvj.flacify"
-              compileSdk = 35
-              ndkVersion = flutter.ndkVersion
-              compileOptions {
-                  sourceCompatibility = JavaVersion.VERSION_11
-                  targetCompatibility = JavaVersion.VERSION_11
-              }
-              kotlinOptions {
-                  jvmTarget = JavaVersion.VERSION_11.toString()
-              }
-              signingConfigs {
-                  create("release") {
-                      val props = java.util.Properties()
-                      file("../key.properties").inputStream().use { props.load(it) }
-                      keyAlias = props["keyAlias"] as String
-                      keyPassword = props["keyPassword"] as String
-                      storeFile = file(props["storeFile"] as String)
-                      storePassword = props["storePassword"] as String
-                  }
-              }
-              defaultConfig {
-                  applicationId = "com.imvj.flacify"
-                  minSdk = 21
-                  targetSdk = 35
-                  versionCode = flutter.versionCode
-                  versionName = flutter.versionName
-              }
-              buildTypes {
-                  release {
-                      signingConfig = signingConfigs.getByName("release")
-                      isMinifyEnabled = true
-                      isShrinkResources = true
-                      proguardFiles(
-                          getDefaultProguardFile("proguard-android-optimize.txt"),
-                          "proguard-rules.pro"
-                      )
-                  }
-              }
-          }
-          flutter {
-              source = "../.."
-          }
+          android.buildTypes.getByName("release").signingConfig = android.signingConfigs.getByName("release")
           GRADLE
+
+        env:
+          STORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
 
       - name: Build APK
         run: |
@@ -148,7 +114,7 @@ jobs:
           path: build/app/outputs/bundle/release/app-release.aab
           retention-days: 7
 
-      - name: Publish to Play Store (internal track)
+      - name: Publish to Play Store
         if: startsWith(github.ref, 'refs/tags/')
         uses: r0adkll/upload-google-play@v1
         with:
