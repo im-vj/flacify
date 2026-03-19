@@ -4,10 +4,9 @@ import '../models/album.dart';
 import '../models/artist.dart';
 import '../models/song.dart';
 
-// --- Config (change these to your server) ---
-const String kNavidromeUrl = 'https://music.imvj.in';
-const String kNavidromeUser = 'YOUR_USERNAME';
-const String kNavidromePass = 'YOUR_PASSWORD';
+const String kNavidromeUrl = String.fromEnvironment('NAVIDROME_URL', defaultValue: 'https://navidrome.imvj.in');
+const String kNavidromeUser = String.fromEnvironment('NAVIDROME_USER', defaultValue: '');
+const String kNavidromePass = String.fromEnvironment('NAVIDROME_PASS', defaultValue: '');
 
 final navidromeServiceProvider = Provider<NavidromeService>((ref) {
   return NavidromeService(
