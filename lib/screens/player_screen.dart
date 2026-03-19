@@ -1,0 +1,350 @@
+import 'package:cached_network_image/cached_network_image.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_animate/flutter_animate.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:just_audio/just_audio.dart';
+import '../providers/navidrome_provider.dart';
+import '../providers/player_provider.dart';
+import '../services/lyrics_service.dart';
+
+class PlayerScreen extends ConsumerStatefulWidget {
+  const PlayerScreen({super.key});
+
+  @override
+  ConsumerState<PlayerScreen> createState() => _PlayerScreenState();
+}
+
+class _PlayerScreenState extends ConsumerState<PlayerScreen> {
+  final LyricsService _lyricsService = LyricsService();
+  List<LyricLine>? _lyrics;
+  bool _loadingLyrics = false;
+  bool _showLyrics = false;
+  String? _lastSongId;
+  final ScrollController _lyricsScroll = ScrollController();
+
+  @override
+  void dispose() {
+    _lyricsScroll.dispose();
+    super.dispose();
+  }
+
+  Future<void> _loadLyrics(song) async {
+    if (song == null || song.id == _lastSongId) return;
+    _lastSongId = song.id;
+    setState(() { _loadingLyrics = true; _lyrics = null; });
+    final lines = await _lyricsService.getSyncedLyrics(
+      title: song.title,
+      artist: song.artist,
+      album: song.album,
+      duration: song.duration,
+    );
+    if (mounted) setState(() { _lyrics = lines; _loadingLyrics = false; });
+  }
+
+  int _currentLyricIndex(int posMs) {
+    if (_lyrics == null || _lyrics!.isEmpty) return -1;
+    int idx = 0;
+    for (int i = 0; i < _lyrics!.length; i++) {
+      if (_lyrics![i].timeMs <= posMs) idx = i;
+      else break;
+    }
+    return idx;
+  }
+
+  void _scrollToLyric(int index) {
+    if (!_lyricsScroll.hasClients) return;
+    final offset = (index * 52.0) - 160;
+    _lyricsScroll.animateTo(
+      offset.clamp(0.0, _lyricsScroll.position.maxScrollExtent),
+      duration: const Duration(milliseconds: 400),
+      curve: Curves.easeInOut,
+    );
+  }
+
+  String _fmt(Duration d) {
+    final m = d.inMinutes.remainder(60);
+    final s = d.inSeconds.remainder(60);
+    return '$m:${s.toString().padLeft(2, '0')}';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final playerState = ref.watch(playerProvider);
+    final player = ref.read(playerProvider.notifier);
+    final navidrome = ref.read(navidromeServiceProvider);
+    final song = player.currentSong;
+
+    if (song == null) return const Scaffold(body: Center(child: Text('Nothing playing')));
+
+    _loadLyrics(song);
+
+    final coverUrl = navidrome.coverArtUrl(song.coverArtId);
+    final posMs = playerState.position.inMilliseconds;
+    final durMs = playerState.duration.inMilliseconds;
+    final progress = durMs > 0 ? posMs / durMs : 0.0;
+    final lyricIdx = _currentLyricIndex(posMs);
+
+    // Auto scroll lyrics
+    if (_showLyrics && lyricIdx >= 0) {
+      WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToLyric(lyricIdx));
+    }
+
+    return Scaffold(
+      backgroundColor: const Color(0xFF0A0A0F),
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.keyboard_arrow_down_rounded, size: 32),
+          onPressed: () => Navigator.pop(context),
+        ),
+        title: Column(
+          children: [
+            const Text('Now Playing',
+                style: TextStyle(fontSize: 12, color: Colors.white38)),
+            Text(song.album,
+                style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis),
+          ],
+        ),
+        centerTitle: true,
+        actions: [
+          IconButton(
+            icon: Icon(
+              _showLyrics ? Icons.music_note_rounded : Icons.lyrics_rounded,
+              color: _showLyrics ? const Color(0xFF6C63FF) : Colors.white54,
+            ),
+            onPressed: () => setState(() => _showLyrics = !_showLyrics),
+          ),
+        ],
+      ),
+      body: Column(
+        children: [
+          // Album art or lyrics
+          Expanded(
+            child: _showLyrics
+                ? _buildLyricsView(lyricIdx)
+                : _buildAlbumArt(coverUrl, song),
+          ),
+
+          // Song info
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        song.title,
+                        style: const TextStyle(
+                            fontSize: 22, fontWeight: FontWeight.w800),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      Text(
+                        song.artist,
+                        style: const TextStyle(
+                            color: Colors.white54, fontSize: 15),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                  ),
+                ),
+                if (song.suffix?.toLowerCase() == 'flac')
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 8, vertical: 3),
+                    decoration: BoxDecoration(
+                      border: Border.all(color: const Color(0xFF6C63FF)),
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: const Text('FLAC',
+                        style: TextStyle(
+                            fontSize: 11,
+                            color: Color(0xFF6C63FF),
+                            fontWeight: FontWeight.w700)),
+                  ),
+              ],
+            ),
+          ),
+
+          // Progress bar
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 24),
+            child: Column(
+              children: [
+                SliderTheme(
+                  data: SliderTheme.of(context).copyWith(
+                    trackHeight: 3,
+                    thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 6),
+                    overlayShape: const RoundSliderOverlayShape(overlayRadius: 14),
+                    activeTrackColor: const Color(0xFF6C63FF),
+                    inactiveTrackColor: Colors.white12,
+                    thumbColor: Colors.white,
+                    overlayColor: const Color(0x226C63FF),
+                  ),
+                  child: Slider(
+                    value: progress.clamp(0.0, 1.0),
+                    onChanged: (v) => player.seek(
+                      Duration(milliseconds: (v * durMs).toInt()),
+                    ),
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 4),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(_fmt(playerState.position),
+                          style: const TextStyle(
+                              color: Colors.white38, fontSize: 12)),
+                      Text(_fmt(playerState.duration),
+                          style: const TextStyle(
+                              color: Colors.white38, fontSize: 12)),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          // Controls
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: [
+                IconButton(
+                  icon: Icon(
+                    Icons.shuffle_rounded,
+                    color: playerState.isShuffling
+                        ? const Color(0xFF6C63FF)
+                        : Colors.white38,
+                  ),
+                  onPressed: () =>
+                      player.setShuffling(!playerState.isShuffling),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.skip_previous_rounded, size: 36),
+                  onPressed: () => player.previous(),
+                ),
+                Container(
+                  width: 64,
+                  height: 64,
+                  decoration: const BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: Color(0xFF6C63FF),
+                  ),
+                  child: playerState.isLoading
+                      ? const Padding(
+                          padding: EdgeInsets.all(18),
+                          child: CircularProgressIndicator(
+                              color: Colors.white, strokeWidth: 2),
+                        )
+                      : IconButton(
+                          icon: Icon(
+                            playerState.isPlaying
+                                ? Icons.pause_rounded
+                                : Icons.play_arrow_rounded,
+                            size: 36,
+                            color: Colors.white,
+                          ),
+                          onPressed: () => player.togglePlay(),
+                        ),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.skip_next_rounded, size: 36),
+                  onPressed: () => player.next(),
+                ),
+                IconButton(
+                  icon: Icon(
+                    playerState.loopMode == LoopMode.off
+                        ? Icons.repeat_rounded
+                        : playerState.loopMode == LoopMode.all
+                            ? Icons.repeat_rounded
+                            : Icons.repeat_one_rounded,
+                    color: playerState.loopMode != LoopMode.off
+                        ? const Color(0xFF6C63FF)
+                        : Colors.white38,
+                  ),
+                  onPressed: () {
+                    final next = playerState.loopMode == LoopMode.off
+                        ? LoopMode.all
+                        : playerState.loopMode == LoopMode.all
+                            ? LoopMode.one
+                            : LoopMode.off;
+                    player.setCycling(next);
+                  },
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAlbumArt(String coverUrl, song) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 16),
+      child: AspectRatio(
+        aspectRatio: 1,
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(16),
+          child: coverUrl.isNotEmpty
+              ? CachedNetworkImage(
+                  imageUrl: coverUrl,
+                  fit: BoxFit.cover,
+                  placeholder: (_, __) => Container(
+                    color: const Color(0xFF1E1E2E),
+                    child: const Icon(Icons.album_rounded,
+                        color: Colors.white24, size: 80),
+                  ),
+                )
+              : Container(
+                  color: const Color(0xFF1E1E2E),
+                  child: const Icon(Icons.album_rounded,
+                      color: Colors.white24, size: 80),
+                ),
+        ),
+      ).animate().fadeIn(duration: 300.ms).scale(begin: const Offset(0.95, 0.95)),
+    );
+  }
+
+  Widget _buildLyricsView(int currentIdx) {
+    if (_loadingLyrics) {
+      return const Center(child: CircularProgressIndicator());
+    }
+    if (_lyrics == null || _lyrics!.isEmpty) {
+      return const Center(
+        child: Text('No lyrics available',
+            style: TextStyle(color: Colors.white38)),
+      );
+    }
+    return ListView.builder(
+      controller: _lyricsScroll,
+      padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 80),
+      itemCount: _lyrics!.length,
+      itemBuilder: (ctx, i) {
+        final isActive = i == currentIdx;
+        return AnimatedDefaultTextStyle(
+          duration: const Duration(milliseconds: 300),
+          style: TextStyle(
+            fontSize: isActive ? 22 : 16,
+            fontWeight: isActive ? FontWeight.w800 : FontWeight.w400,
+            color: isActive ? Colors.white : Colors.white24,
+            height: 1.6,
+          ),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 8),
+            child: Text(_lyrics![i].text, textAlign: TextAlign.center),
+          ),
+        );
+      },
+    );
+  }
+}
