@@ -39,8 +39,8 @@ jobs:
             ~/.gradle/wrapper
             /usr/local/lib/android/sdk/ndk
             /usr/local/lib/android/sdk/cmake
-          key: ${{ runner.os }}-gradle-ndk-${{ hashFiles('android/gradle/wrapper/gradle-wrapper.properties') }}
-          restore-keys: ${{ runner.os }}-gradle-ndk-
+          key: ${{ runner.os }}-gradle-${{ hashFiles('android/gradle/wrapper/gradle-wrapper.properties') }}
+          restore-keys: ${{ runner.os }}-gradle-
 
       - name: Fix android config
         run: |
@@ -48,97 +48,38 @@ jobs:
           sed -i 's/compileSdk = 3[0-9]/compileSdk = 36/' android/app/build.gradle.kts
           sed -i 's/targetSdk = 3[0-9]/targetSdk = 36/' android/app/build.gradle.kts
           sed -i 's/version "8\.[0-9]\.[0-9]"/version "8.6.0"/' android/settings.gradle.kts
-          # Disable NDK cmake - no native code needed
-          echo 'android.ndkVersion=27.0.12077973' >> android/gradle.properties
           echo 'android.enableJetifier=false' >> android/gradle.properties
 
       - name: Flutter pub get
         run: flutter pub get
 
-      - name: Decode keystore
-        if: github.event_name != 'pull_request'
-        run: |
-          echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > android/app/flacify-release.jks
-          printf 'storePassword=%s\nkeyPassword=%s\nkeyAlias=%s\nstoreFile=%s\n' \
-            "${{ secrets.KEYSTORE_PASSWORD }}" \
-            "${{ secrets.KEY_PASSWORD }}" \
-            "${{ secrets.KEY_ALIAS }}" \
-            "flacify-release.jks" > android/key.properties
-          echo "Keystore size: $(wc -c < android/app/flacify-release.jks) bytes"
-          keytool -list -keystore android/app/flacify-release.jks \
-            -storepass "${{ secrets.KEYSTORE_PASSWORD }}" && echo "✅ Keystore OK" || echo "❌ Keystore FAILED"
-
-      - name: Setup release signing
-        if: github.event_name != 'pull_request'
-        working-directory: android/app
-        run: |
-          cat >> build.gradle.kts << 'GRADLE'
-
-          android.signingConfigs.create("release") {
-              storeFile = file("flacify-release.jks")
-              storePassword = System.getenv("STORE_PASSWORD")
-              keyAlias = System.getenv("KEY_ALIAS")
-              keyPassword = System.getenv("KEY_PASSWORD")
-          }
-          android.buildTypes.getByName("release").signingConfig =
-              android.signingConfigs.getByName("release")
-          GRADLE
-        env:
-          STORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
-          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
-          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
-
       - name: Build APK
-        env:
-          STORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
-          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
-          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
         run: |
           flutter build apk --release \
             --dart-define=NAVIDROME_URL=${{ secrets.NAVIDROME_URL }} \
             --dart-define=NAVIDROME_USER=${{ secrets.NAVIDROME_USER }} \
             --dart-define=NAVIDROME_PASS=${{ secrets.NAVIDROME_PASS }}
 
-      - name: Build AAB
-        if: github.event_name != 'pull_request'
-        env:
-          STORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
-          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
-          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+      - name: Rename APK
         run: |
-          flutter build appbundle --release \
-            --dart-define=NAVIDROME_URL=${{ secrets.NAVIDROME_URL }} \
-            --dart-define=NAVIDROME_USER=${{ secrets.NAVIDROME_USER }} \
-            --dart-define=NAVIDROME_PASS=${{ secrets.NAVIDROME_PASS }}
+          mv build/app/outputs/apk/release/app-release.apk \
+             build/app/outputs/apk/release/flacify-${{ github.ref_name }}.apk
 
-      - name: Upload APK
+      - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
           name: flacify-apk
-          path: build/app/outputs/apk/release/app-release.apk
+          path: build/app/outputs/apk/release/flacify-${{ github.ref_name }}.apk
           retention-days: 7
-
-      - name: Upload AAB
-        if: github.event_name != 'pull_request'
-        uses: actions/upload-artifact@v4
-        with:
-          name: flacify-aab
-          path: build/app/outputs/bundle/release/app-release.aab
-          retention-days: 7
-
-      - name: Publish to Play Store
-        if: startsWith(github.ref, 'refs/tags/')
-        uses: r0adkll/upload-google-play@v1
-        with:
-          serviceAccountJsonPlainText: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
-          packageName: com.imvj.flacify
-          releaseFiles: build/app/outputs/bundle/release/app-release.aab
-          track: internal
-          status: completed
 
       - name: GitHub Release
         if: startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v2
         with:
-          files: build/app/outputs/apk/release/app-release.apk
-          generate_release_notes: true
+          name: Flacify ${{ github.ref_name }}
+          body: |
+            ## Flacify ${{ github.ref_name }}
+            Self-hosted hi-fi music player for Navidrome.
+            ### Install
+            Download and install `flacify-${{ github.ref_name }}.apk` on your Android device.
+          files: build/app/outputs/apk/release/flacify-${{ github.ref_name }}.apk
