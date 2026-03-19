@@ -1,8 +1,6 @@
 name: flacify
 description: Self-hosted hi-fi music player
-publish_to: 'none'
-version: 1.0.0+1
-
+version: 1.0.3+4
 environment:
   sdk: '>=3.0.0 <4.0.0'
 
@@ -42,6 +40,14 @@ dev_dependencies:
   flutter_lints: ^3.0.0
   hive_generator: ^2.0.1
   build_runner: ^2.4.13
+  flutter_launcher_icons: ^0.13.1
+
+flutter_launcher_icons:
+  android: true
+  ios: true
+  image_path: "/home/ubuntu/.gemini/antigravity/brain/ea1de138-1280-4888-aee6-3e4d11e971a5/flacify_logo_1773943525050.png"
+  adaptive_icon_background: "#000000"
+  adaptive_icon_foreground: "/home/ubuntu/.gemini/antigravity/brain/ea1de138-1280-4888-aee6-3e4d11e971a5/flacify_logo_1773943525050.png"
 
 flutter:
   uses-material-design: true
