@@ -4,6 +4,7 @@ import 'package:dio/dio.dart';
 import '../models/song.dart';
 import '../models/album.dart';
 import '../models/artist.dart';
+import '../models/playlist.dart';
 
 class NavidromeService {
   final String baseUrl;
@@ -95,6 +96,28 @@ class NavidromeService {
     final data = res.data['subsonic-response'];
     if (data['status'] != 'ok') throw Exception(data['error']['message']);
     final songs = data['searchResult3']['song'] as List? ?? [];
+    return songs.map((s) => Song.fromJson(s)).toList();
+  }
+
+  Future<List<Playlist>> getPlaylists() async {
+    final res = await _dio.get(
+      '$baseUrl/rest/getPlaylists',
+      queryParameters: _auth,
+    );
+    final data = res.data['subsonic-response'];
+    if (data['status'] != 'ok') throw Exception(data['error']['message']);
+    final playlists = data['playlists']['playlist'] as List? ?? [];
+    return playlists.map((p) => Playlist.fromJson(p)).toList();
+  }
+
+  Future<List<Song>> getPlaylistSongs(String playlistId) async {
+    final res = await _dio.get(
+      '$baseUrl/rest/getPlaylist',
+      queryParameters: {..._auth, 'id': playlistId},
+    );
+    final data = res.data['subsonic-response'];
+    if (data['status'] != 'ok') throw Exception(data['error']['message']);
+    final songs = data['playlist']['entry'] as List? ?? [];
     return songs.map((s) => Song.fromJson(s)).toList();
   }
 
