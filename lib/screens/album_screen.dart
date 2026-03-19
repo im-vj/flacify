@@ -40,7 +40,7 @@ class AlbumScreen extends ConsumerWidget {
                         end: Alignment.bottomCenter,
                         colors: [
                           Colors.transparent,
-                          const Color(0xFF0A0A0F).withOpacity(0.8),
+                          const Color(0xFF0A0A0F).withValues(alpha: 0.8),
                           const Color(0xFF0A0A0F),
                         ],
                       ),
@@ -63,7 +63,7 @@ class AlbumScreen extends ConsumerWidget {
                         Text(
                           '${album.artist} • ${album.year ?? ''}',
                           style: TextStyle(
-                            color: Colors.white.withOpacity(0.7),
+                            color: Colors.white.withValues(alpha: 0.7),
                           ),
                         ),
                       ],

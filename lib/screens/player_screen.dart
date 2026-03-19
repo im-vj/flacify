@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:just_audio/just_audio.dart';
+import '../models/song.dart';
 import '../providers/navidrome_provider.dart';
 import '../providers/player_provider.dart';
 import '../services/lyrics_service.dart';
@@ -20,16 +21,10 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
   bool _loadingLyrics = false;
   bool _showLyrics = false;
   String? _lastSongId;
-  final ScrollController _lyricsScroll = ScrollController();
 
-  @override
-  void dispose() {
-    _lyricsScroll.dispose();
-    super.dispose();
-  }
 
-  Future<void> _loadLyrics(song) async {
-    if (song == null || song.id == _lastSongId) return;
+  Future<void> _loadLyrics(Song song) async {
+    if (song.id == _lastSongId) return;
     _lastSongId = song.id;
     setState(() { _loadingLyrics = true; _lyrics = null; });
     final lines = await _lyricsService.getSyncedLyrics(
@@ -45,31 +40,19 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
     if (_lyrics == null || _lyrics!.isEmpty) return -1;
     int idx = 0;
     for (int i = 0; i < _lyrics!.length; i++) {
-      if (_lyrics![i].timeMs <= posMs) idx = i;
-      else break;
+        if (_lyrics![i].timeMs <= posMs) {
+          idx = i;
+        } else {
+          break;
+        }
     }
     return idx;
   }
 
-  void _scrollToLyric(int index) {
-    if (!_lyricsScroll.hasClients) return;
-    final offset = (index * 52.0) - 160;
-    _lyricsScroll.animateTo(
-      offset.clamp(0.0, _lyricsScroll.position.maxScrollExtent),
-      duration: const Duration(milliseconds: 400),
-      curve: Curves.easeInOut,
-    );
-  }
-
-  String _fmt(Duration d) {
-    final m = d.inMinutes.remainder(60);
-    final s = d.inSeconds.remainder(60);
-    return '$m:${s.toString().padLeft(2, '0')}';
-  }
 
   @override
   Widget build(BuildContext context) {
-    final playerState = ref.watch(playerProvider);
+    final playerState = ref.watch(playerProvider.select((s) => (position: s.position, duration: s.duration)));
     final player = ref.read(playerProvider.notifier);
     final navidrome = ref.read(navidromeServiceProvider);
     final song = player.currentSong;
@@ -80,14 +63,8 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
 
     final coverUrl = navidrome.coverArtUrl(song.coverArtId);
     final posMs = playerState.position.inMilliseconds;
-    final durMs = playerState.duration.inMilliseconds;
-    final progress = durMs > 0 ? posMs / durMs : 0.0;
     final lyricIdx = _currentLyricIndex(posMs);
 
-    // Auto scroll lyrics
-    if (_showLyrics && lyricIdx >= 0) {
-      WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToLyric(lyricIdx));
-    }
 
     return Scaffold(
       backgroundColor: const Color(0xFF0A0A0F),
@@ -98,16 +75,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
           icon: const Icon(Icons.keyboard_arrow_down_rounded, size: 32),
           onPressed: () => Navigator.pop(context),
         ),
-        title: Column(
-          children: [
-            const Text('Now Playing',
-                style: TextStyle(fontSize: 12, color: Colors.white38)),
-            Text(song.album,
-                style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis),
-          ],
-        ),
+        title: _AppBarTitle(song: song),
         centerTitle: true,
         actions: [
           IconButton(
@@ -124,171 +92,28 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
           // Album art or lyrics
           Expanded(
             child: _showLyrics
-                ? _buildLyricsView(lyricIdx)
+                ? _LyricsView(
+                    lyrics: _lyrics,
+                    loading: _loadingLyrics,
+                    currentIdx: lyricIdx,
+                  )
                 : _buildAlbumArt(coverUrl, song),
           ),
 
           // Song info
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
-            child: Row(
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        song.title,
-                        style: const TextStyle(
-                            fontSize: 22, fontWeight: FontWeight.w800),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      Text(
-                        song.artist,
-                        style: const TextStyle(
-                            color: Colors.white54, fontSize: 15),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ],
-                  ),
-                ),
-                if (song.suffix?.toLowerCase() == 'flac')
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 8, vertical: 3),
-                    decoration: BoxDecoration(
-                      border: Border.all(color: const Color(0xFF6C63FF)),
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                    child: const Text('FLAC',
-                        style: TextStyle(
-                            fontSize: 11,
-                            color: Color(0xFF6C63FF),
-                            fontWeight: FontWeight.w700)),
-                  ),
-              ],
-            ),
-          ),
+          _SongInfo(song: song),
 
           // Progress bar
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 24),
-            child: Column(
-              children: [
-                SliderTheme(
-                  data: SliderTheme.of(context).copyWith(
-                    trackHeight: 3,
-                    thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 6),
-                    overlayShape: const RoundSliderOverlayShape(overlayRadius: 14),
-                    activeTrackColor: const Color(0xFF6C63FF),
-                    inactiveTrackColor: Colors.white12,
-                    thumbColor: Colors.white,
-                    overlayColor: const Color(0x226C63FF),
-                  ),
-                  child: Slider(
-                    value: progress.clamp(0.0, 1.0),
-                    onChanged: (v) => player.seek(
-                      Duration(milliseconds: (v * durMs).toInt()),
-                    ),
-                  ),
-                ),
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 4),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(_fmt(playerState.position),
-                          style: const TextStyle(
-                              color: Colors.white38, fontSize: 12)),
-                      Text(_fmt(playerState.duration),
-                          style: const TextStyle(
-                              color: Colors.white38, fontSize: 12)),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
+          const _PlayerProgressBar(),
 
           // Controls
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: [
-                IconButton(
-                  icon: Icon(
-                    Icons.shuffle_rounded,
-                    color: playerState.isShuffling
-                        ? const Color(0xFF6C63FF)
-                        : Colors.white38,
-                  ),
-                  onPressed: () =>
-                      player.setShuffling(!playerState.isShuffling),
-                ),
-                IconButton(
-                  icon: const Icon(Icons.skip_previous_rounded, size: 36),
-                  onPressed: () => player.previous(),
-                ),
-                Container(
-                  width: 64,
-                  height: 64,
-                  decoration: const BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: Color(0xFF6C63FF),
-                  ),
-                  child: playerState.isLoading
-                      ? const Padding(
-                          padding: EdgeInsets.all(18),
-                          child: CircularProgressIndicator(
-                              color: Colors.white, strokeWidth: 2),
-                        )
-                      : IconButton(
-                          icon: Icon(
-                            playerState.isPlaying
-                                ? Icons.pause_rounded
-                                : Icons.play_arrow_rounded,
-                            size: 36,
-                            color: Colors.white,
-                          ),
-                          onPressed: () => player.togglePlay(),
-                        ),
-                ),
-                IconButton(
-                  icon: const Icon(Icons.skip_next_rounded, size: 36),
-                  onPressed: () => player.next(),
-                ),
-                IconButton(
-                  icon: Icon(
-                    playerState.loopMode == LoopMode.off
-                        ? Icons.repeat_rounded
-                        : playerState.loopMode == LoopMode.all
-                            ? Icons.repeat_rounded
-                            : Icons.repeat_one_rounded,
-                    color: playerState.loopMode != LoopMode.off
-                        ? const Color(0xFF6C63FF)
-                        : Colors.white38,
-                  ),
-                  onPressed: () {
-                    final next = playerState.loopMode == LoopMode.off
-                        ? LoopMode.all
-                        : playerState.loopMode == LoopMode.all
-                            ? LoopMode.one
-                            : LoopMode.off;
-                    player.setCycling(next);
-                  },
-                ),
-              ],
-            ),
-          ),
+          const _PlayerControls(),
         ],
       ),
     );
   }
 
-  Widget _buildAlbumArt(String coverUrl, song) {
+  Widget _buildAlbumArt(String coverUrl, Song song) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 16),
       child: AspectRatio(
@@ -314,23 +139,282 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
       ).animate().fadeIn(duration: 300.ms).scale(begin: const Offset(0.95, 0.95)),
     );
   }
+}
 
-  Widget _buildLyricsView(int currentIdx) {
-    if (_loadingLyrics) {
+class _AppBarTitle extends StatelessWidget {
+  final Song song;
+  const _AppBarTitle({required this.song});
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        const Text('Now Playing',
+            style: TextStyle(fontSize: 12, color: Colors.white38)),
+        Text(song.album,
+            style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis),
+      ],
+    );
+  }
+}
+
+class _SongInfo extends StatelessWidget {
+  final Song song;
+  const _SongInfo({required this.song});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  song.title,
+                  style: const TextStyle(
+                      fontSize: 22, fontWeight: FontWeight.w800),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                Text(
+                  song.artist,
+                  style: const TextStyle(
+                      color: Colors.white54, fontSize: 15),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
+            ),
+          ),
+          if (song.suffix?.toLowerCase() == 'flac')
+            Container(
+              padding: const EdgeInsets.symmetric(
+                  horizontal: 8, vertical: 3),
+              decoration: BoxDecoration(
+                border: Border.all(color: const Color(0xFF6C63FF)),
+                borderRadius: BorderRadius.circular(6),
+              ),
+              child: const Text('FLAC',
+                  style: TextStyle(
+                      fontSize: 11,
+                      color: Color(0xFF6C63FF),
+                      fontWeight: FontWeight.w700)),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+class _PlayerProgressBar extends ConsumerWidget {
+  const _PlayerProgressBar();
+
+  String _fmt(Duration d) {
+    final m = d.inMinutes.remainder(60);
+    final s = d.inSeconds.remainder(60);
+    return '$m:${s.toString().padLeft(2, '0')}';
+  }
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final position = ref.watch(playerProvider.select((s) => s.position));
+    final duration = ref.watch(playerProvider.select((s) => s.duration));
+    final player = ref.read(playerProvider.notifier);
+
+    final posMs = position.inMilliseconds;
+    final durMs = duration.inMilliseconds;
+    final progress = durMs > 0 ? posMs / durMs : 0.0;
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 24),
+      child: Column(
+        children: [
+          SliderTheme(
+            data: SliderTheme.of(context).copyWith(
+              trackHeight: 3,
+              thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 6),
+              overlayShape: const RoundSliderOverlayShape(overlayRadius: 14),
+              activeTrackColor: const Color(0xFF6C63FF),
+              inactiveTrackColor: Colors.white12,
+              thumbColor: Colors.white,
+              overlayColor: const Color(0x226C63FF),
+            ),
+            child: Slider(
+              value: progress.clamp(0.0, 1.0),
+              onChanged: (v) => player.seek(
+                Duration(milliseconds: (v * durMs).toInt()),
+              ),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 4),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(_fmt(position),
+                    style: const TextStyle(
+                        color: Colors.white38, fontSize: 12)),
+                Text(_fmt(duration),
+                    style: const TextStyle(
+                        color: Colors.white38, fontSize: 12)),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _PlayerControls extends ConsumerWidget {
+  const _PlayerControls();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final isShuffling = ref.watch(playerProvider.select((s) => s.isShuffling));
+    final loopMode = ref.watch(playerProvider.select((s) => s.loopMode));
+    final isPlaying = ref.watch(playerProvider.select((s) => s.isPlaying));
+    final isLoading = ref.watch(playerProvider.select((s) => s.isLoading));
+    final player = ref.read(playerProvider.notifier);
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+        children: [
+          IconButton(
+            icon: Icon(
+              Icons.shuffle_rounded,
+              color: isShuffling
+                  ? const Color(0xFF6C63FF)
+                  : Colors.white38,
+            ),
+            onPressed: () =>
+                player.setShuffling(!isShuffling),
+          ),
+          IconButton(
+            icon: const Icon(Icons.skip_previous_rounded, size: 36),
+            onPressed: () => player.previous(),
+          ),
+          Container(
+            width: 64,
+            height: 64,
+            decoration: const BoxDecoration(
+              shape: BoxShape.circle,
+              color: Color(0xFF6C63FF),
+            ),
+            child: isLoading
+                ? const Padding(
+                    padding: EdgeInsets.all(18),
+                    child: CircularProgressIndicator(
+                        color: Colors.white, strokeWidth: 2),
+                  )
+                : IconButton(
+                    icon: Icon(
+                      isPlaying
+                          ? Icons.pause_rounded
+                          : Icons.play_arrow_rounded,
+                      size: 36,
+                      color: Colors.white,
+                    ),
+                    onPressed: () => player.togglePlay(),
+                  ),
+          ),
+          IconButton(
+            icon: const Icon(Icons.skip_next_rounded, size: 36),
+            onPressed: () => player.next(),
+          ),
+          IconButton(
+            icon: Icon(
+              loopMode == LoopMode.off
+                  ? Icons.repeat_rounded
+                  : loopMode == LoopMode.all
+                      ? Icons.repeat_rounded
+                      : Icons.repeat_one_rounded,
+              color: loopMode != LoopMode.off
+                  ? const Color(0xFF6C63FF)
+                  : Colors.white38,
+            ),
+            onPressed: () {
+              final next = loopMode == LoopMode.off
+                  ? LoopMode.all
+                  : loopMode == LoopMode.all
+                      ? LoopMode.one
+                      : LoopMode.off;
+              player.setCycling(next);
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+}
+
+class _LyricsView extends StatefulWidget {
+  final List<LyricLine>? lyrics;
+  final bool loading;
+  final int currentIdx;
+
+  const _LyricsView({
+    required this.lyrics,
+    required this.loading,
+    required this.currentIdx,
+  });
+
+  @override
+  State<_LyricsView> createState() => _LyricsViewState();
+}
+
+class _LyricsViewState extends State<_LyricsView> {
+  final ScrollController _scrollController = ScrollController();
+
+  @override
+  void didUpdateWidget(_LyricsView oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.currentIdx != oldWidget.currentIdx && widget.currentIdx >= 0) {
+      _scrollToLyric(widget.currentIdx);
+    }
+  }
+
+  void _scrollToLyric(int index) {
+    if (!_scrollController.hasClients) return;
+    final offset = (index * 52.0) - 160;
+    _scrollController.animateTo(
+      offset.clamp(0.0, _scrollController.position.maxScrollExtent),
+      duration: const Duration(milliseconds: 400),
+      curve: Curves.easeInOut,
+    );
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (widget.loading) {
       return const Center(child: CircularProgressIndicator());
     }
-    if (_lyrics == null || _lyrics!.isEmpty) {
+    if (widget.lyrics == null || widget.lyrics!.isEmpty) {
       return const Center(
         child: Text('No lyrics available',
             style: TextStyle(color: Colors.white38)),
       );
     }
     return ListView.builder(
-      controller: _lyricsScroll,
+      controller: _scrollController,
       padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 80),
-      itemCount: _lyrics!.length,
+      itemCount: widget.lyrics!.length,
       itemBuilder: (ctx, i) {
-        final isActive = i == currentIdx;
+        final isActive = i == widget.currentIdx;
         return AnimatedDefaultTextStyle(
           duration: const Duration(milliseconds: 300),
           style: TextStyle(
@@ -341,7 +425,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
           ),
           child: Padding(
             padding: const EdgeInsets.symmetric(vertical: 8),
-            child: Text(_lyrics![i].text, textAlign: TextAlign.center),
+            child: Text(widget.lyrics![i].text, textAlign: TextAlign.center),
           ),
         );
       },

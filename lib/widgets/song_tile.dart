@@ -20,10 +20,10 @@ class SongTile extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final navidrome = ref.read(navidromeServiceProvider);
-    final playerState = ref.watch(playerProvider);
+    final isCurrent = ref.watch(playerProvider.select((s) => s.queue.isNotEmpty && s.queue[s.currentIndex].id == song.id));
+    final isPlaying = ref.watch(playerProvider.select((s) => s.isPlaying));
     final player = ref.read(playerProvider.notifier);
     final coverUrl = navidrome.coverArtUrl(song.coverArtId, size: 128);
-    final isCurrent = player.currentSong?.id == song.id;
 
     return ListTile(
       onTap: onTap,
@@ -32,7 +32,7 @@ class SongTile extends ConsumerWidget {
               width: 40,
               child: isCurrent
                   ? Icon(
-                      playerState.isPlaying
+                      isPlaying
                           ? Icons.volume_up_rounded
                           : Icons.volume_off_rounded,
                       color: const Color(0xFF6C63FF),

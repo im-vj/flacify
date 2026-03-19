@@ -1,5 +1,4 @@
-import 'dart:convert';
-import 'package:http/http.dart' as http;
+import 'package:dio/dio.dart';
 
 class LyricLine {
   final int timeMs;
@@ -8,6 +7,8 @@ class LyricLine {
 }
 
 class LyricsService {
+  final Dio _dio = Dio();
+
   Future<List<LyricLine>?> getSyncedLyrics({
     required String title,
     required String artist,
@@ -15,16 +16,17 @@ class LyricsService {
     required int duration,
   }) async {
     try {
-      final uri = Uri.parse(
-        'https://lrclib.net/api/get'
-        '?artist_name=${Uri.encodeComponent(artist)}'
-        '&track_name=${Uri.encodeComponent(title)}'
-        '&album_name=${Uri.encodeComponent(album)}'
-        '&duration=$duration',
+      final res = await _dio.get(
+        'https://lrclib.net/api/get',
+        queryParameters: {
+          'artist_name': artist,
+          'track_name': title,
+          'album_name': album,
+          'duration': duration,
+        },
       );
-      final res = await http.get(uri);
       if (res.statusCode != 200) return null;
-      final data = jsonDecode(res.body);
+      final data = res.data;
       final synced = data['syncedLyrics'] as String?;
       if (synced == null || synced.isEmpty) return null;
       return _parseLrc(synced);

@@ -1,15 +1,14 @@
-import 'package:audio_service/audio_service.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:just_audio/just_audio.dart';
 import '../models/song.dart';
 import '../services/navidrome_service.dart';
 import 'navidrome_provider.dart';
 
-class PlayerNotifier extends StateNotifier<PlayerState_> {
+class PlayerNotifier extends StateNotifier<PlayerState> {
   final NavidromeService _navidrome;
   final AudioPlayer _player = AudioPlayer();
 
-  PlayerNotifier(this._navidrome) : super(PlayerState_()) {
+  PlayerNotifier(this._navidrome) : super(PlayerState()) {
     _player.playerStateStream.listen((s) {
       state = state.copyWith(
         isPlaying: s.playing,
@@ -85,7 +84,7 @@ class PlayerNotifier extends StateNotifier<PlayerState_> {
   }
 }
 
-class PlayerState_ {
+class PlayerState {
   final List<Song> queue;
   final int currentIndex;
   final bool isPlaying;
@@ -95,7 +94,7 @@ class PlayerState_ {
   final Duration position;
   final Duration duration;
 
-  PlayerState_({
+  PlayerState({
     this.queue = const [],
     this.currentIndex = 0,
     this.isPlaying = false,
@@ -106,7 +105,7 @@ class PlayerState_ {
     this.duration = Duration.zero,
   });
 
-  PlayerState_ copyWith({
+  PlayerState copyWith({
     List<Song>? queue,
     int? currentIndex,
     bool? isPlaying,
@@ -116,7 +115,7 @@ class PlayerState_ {
     Duration? position,
     Duration? duration,
   }) =>
-      PlayerState_(
+      PlayerState(
         queue: queue ?? this.queue,
         currentIndex: currentIndex ?? this.currentIndex,
         isPlaying: isPlaying ?? this.isPlaying,
@@ -129,6 +128,6 @@ class PlayerState_ {
 }
 
 final playerProvider =
-    StateNotifierProvider<PlayerNotifier, PlayerState_>((ref) {
+    StateNotifierProvider<PlayerNotifier, PlayerState>((ref) {
   return PlayerNotifier(ref.watch(navidromeServiceProvider));
 });
