@@ -15,7 +15,7 @@ class AlbumScreen extends ConsumerWidget {
     final songs = ref.watch(albumSongsProvider(album.id));
     final navidrome = ref.read(navidromeServiceProvider);
     final player = ref.read(playerProvider.notifier);
-    final coverUrl = navidrome.coverArtUrl(album.coverArtId);
+    final coverUrl = navidrome?.coverArtUrl(album.coverArtId) ?? '';
 
     return Scaffold(
       body: CustomScrollView(
@@ -23,7 +23,7 @@ class AlbumScreen extends ConsumerWidget {
           SliverAppBar(
             expandedHeight: 300,
             pinned: true,
-            backgroundColor: const Color(0xFF0A0A0F),
+            backgroundColor: const Color(0xFF050014),
             flexibleSpace: FlexibleSpaceBar(
               background: Stack(
                 fit: StackFit.expand,
@@ -40,8 +40,8 @@ class AlbumScreen extends ConsumerWidget {
                         end: Alignment.bottomCenter,
                         colors: [
                           Colors.transparent,
-                          const Color(0xFF0A0A0F).withValues(alpha: 0.8),
-                          const Color(0xFF0A0A0F),
+                          const Color(0xFF050014).withValues(alpha: 0.8),
+                          const Color(0xFF050014),
                         ],
                       ),
                     ),
@@ -84,7 +84,7 @@ class AlbumScreen extends ConsumerWidget {
                       icon: const Icon(Icons.play_arrow_rounded),
                       label: const Text('Play All'),
                       style: FilledButton.styleFrom(
-                        backgroundColor: const Color(0xFF6C63FF),
+                        backgroundColor: const Color(0xFF00F0FF),
                       ),
                     ),
                     const SizedBox(width: 12),

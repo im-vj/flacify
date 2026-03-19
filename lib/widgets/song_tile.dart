@@ -23,7 +23,7 @@ class SongTile extends ConsumerWidget {
     final isCurrent = ref.watch(playerProvider.select((s) => s.queue.isNotEmpty && s.queue[s.currentIndex].id == song.id));
     final isPlaying = ref.watch(playerProvider.select((s) => s.isPlaying));
     final player = ref.read(playerProvider.notifier);
-    final coverUrl = navidrome.coverArtUrl(song.coverArtId, size: 128);
+    final coverUrl = navidrome?.coverArtUrl(song.coverArtId, size: 128) ?? '';
 
     return ListTile(
       onTap: onTap,
@@ -35,7 +35,7 @@ class SongTile extends ConsumerWidget {
                       isPlaying
                           ? Icons.volume_up_rounded
                           : Icons.volume_off_rounded,
-                      color: const Color(0xFF6C63FF),
+                      color: const Color(0xFF00F0FF),
                       size: 20,
                     )
                   : Text(
@@ -55,7 +55,7 @@ class SongTile extends ConsumerWidget {
                       errorWidget: (_, __, ___) => Container(
                         width: 44,
                         height: 44,
-                        color: const Color(0xFF1E1E2E),
+                        color: const Color(0xFF160033),
                         child: const Icon(Icons.music_note_rounded,
                             color: Colors.white24, size: 20),
                       ),
@@ -63,7 +63,7 @@ class SongTile extends ConsumerWidget {
                   : Container(
                       width: 44,
                       height: 44,
-                      color: const Color(0xFF1E1E2E),
+                      color: const Color(0xFF160033),
                       child: const Icon(Icons.music_note_rounded,
                           color: Colors.white24, size: 20),
                     ),
@@ -74,7 +74,7 @@ class SongTile extends ConsumerWidget {
         overflow: TextOverflow.ellipsis,
         style: TextStyle(
           fontWeight: FontWeight.w600,
-          color: isCurrent ? const Color(0xFF6C63FF) : Colors.white,
+          color: isCurrent ? const Color(0xFF00F0FF) : Colors.white,
         ),
       ),
       subtitle: Text(
@@ -90,14 +90,14 @@ class SongTile extends ConsumerWidget {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
               decoration: BoxDecoration(
-                border: Border.all(color: const Color(0xFF6C63FF)),
+                border: Border.all(color: const Color(0xFF00F0FF)),
                 borderRadius: BorderRadius.circular(4),
               ),
               child: const Text(
                 'FLAC',
                 style: TextStyle(
                   fontSize: 10,
-                  color: Color(0xFF6C63FF),
+                  color: Color(0xFF00F0FF),
                   fontWeight: FontWeight.w700,
                 ),
               ),
@@ -121,7 +121,7 @@ class SongTile extends ConsumerWidget {
     final navidrome = ref.read(navidromeServiceProvider);
     showModalBottomSheet(
       context: context,
-      backgroundColor: const Color(0xFF1E1E2E),
+      backgroundColor: const Color(0xFF160033),
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
       ),
@@ -136,7 +136,7 @@ class SongTile extends ConsumerWidget {
           ListTile(
             leading: const Icon(Icons.favorite_border_rounded),
             title: const Text('Like'),
-            onTap: () { Navigator.pop(context); navidrome.star(song.id); },
+            onTap: () { Navigator.pop(context); navidrome?.star(song.id); },
           ),
           ListTile(
             leading: const Icon(Icons.queue_music_rounded),

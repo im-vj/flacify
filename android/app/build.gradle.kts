@@ -5,7 +5,7 @@ plugins {
 }
 android {
     namespace = "com.imvj.flacify"
-    compileSdk = 34
+    compileSdk = 36
     ndkVersion = flutter.ndkVersion
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11
@@ -17,7 +17,7 @@ android {
     defaultConfig {
         applicationId = "com.imvj.flacify"
         minSdk = 21
-        targetSdk = 34
+        targetSdk = 36
         versionCode = flutter.versionCode
         versionName = flutter.versionName
     }

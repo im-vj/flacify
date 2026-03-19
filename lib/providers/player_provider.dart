@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:just_audio/just_audio.dart';
 import '../models/song.dart';
@@ -5,8 +6,9 @@ import '../services/navidrome_service.dart';
 import 'navidrome_provider.dart';
 
 class PlayerNotifier extends StateNotifier<PlayerState> {
-  final NavidromeService _navidrome;
+  final NavidromeService? _navidrome;
   final AudioPlayer _player = AudioPlayer();
+  Timer? _sleepTimer;
 
   PlayerNotifier(this._navidrome) : super(PlayerState()) {
     _player.playerStateStream.listen((s) {
@@ -32,9 +34,10 @@ class PlayerNotifier extends StateNotifier<PlayerState> {
   AudioPlayer get player => _player;
 
   Future<void> playQueue(List<Song> songs, {int index = 0}) async {
+    if (_navidrome == null) return;
     state = state.copyWith(queue: songs, currentIndex: index);
     final sources = songs
-        .map((s) => AudioSource.uri(Uri.parse(_navidrome.streamUrl(s.id))))
+        .map((s) => AudioSource.uri(Uri.parse(_navidrome!.streamUrl(s.id))))
         .toList();
     await _player.setAudioSource(
       ConcatenatingAudioSource(children: sources),
@@ -77,8 +80,21 @@ class PlayerNotifier extends StateNotifier<PlayerState> {
     return state.queue[state.currentIndex];
   }
 
+  void setSleepTimer(Duration duration) {
+    _sleepTimer?.cancel();
+    _sleepTimer = Timer(duration, () {
+      _player.pause();
+    });
+  }
+
+  void cancelSleepTimer() {
+    _sleepTimer?.cancel();
+    _sleepTimer = null;
+  }
+
   @override
   void dispose() {
+    _sleepTimer?.cancel();
     _player.dispose();
     super.dispose();
   }

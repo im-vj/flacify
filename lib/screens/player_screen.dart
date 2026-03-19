@@ -3,10 +3,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:just_audio/just_audio.dart';
+import 'package:palette_generator/palette_generator.dart';
 import '../models/song.dart';
 import '../providers/navidrome_provider.dart';
 import '../providers/player_provider.dart';
 import '../services/lyrics_service.dart';
+import '../widgets/bottom_sheets/sleep_timer_sheet.dart';
 
 class PlayerScreen extends ConsumerStatefulWidget {
   const PlayerScreen({super.key});
@@ -21,7 +23,23 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
   bool _loadingLyrics = false;
   bool _showLyrics = false;
   String? _lastSongId;
+  Color? _dominantColor;
 
+  Future<void> _extractDominantColor(String imageUrl) async {
+    if (imageUrl.isEmpty) return;
+    try {
+      final paletteGenerator = await PaletteGenerator.fromImageProvider(
+        NetworkImage(imageUrl),
+      );
+      if (mounted) {
+        setState(() {
+          _dominantColor = paletteGenerator.dominantColor?.color;
+        });
+      }
+    } catch (e) {
+      debugPrint('Error extracting color: $e');
+    }
+  }
 
   Future<void> _loadLyrics(Song song) async {
     if (song.id == _lastSongId) return;
@@ -61,54 +79,70 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
 
     _loadLyrics(song);
 
-    final coverUrl = navidrome.coverArtUrl(song.coverArtId);
+    final coverUrl = navidrome?.coverArtUrl(song.coverArtId) ?? '';
     final posMs = playerState.position.inMilliseconds;
     final lyricIdx = _currentLyricIndex(posMs);
 
+    if (_dominantColor == null && coverUrl.isNotEmpty && song.id != _lastSongId) {
+       _extractDominantColor(coverUrl);
+    }
 
     return Scaffold(
-      backgroundColor: const Color(0xFF0A0A0F),
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.keyboard_arrow_down_rounded, size: 32),
-          onPressed: () => Navigator.pop(context),
+      body: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [
+              _dominantColor?.withValues(alpha: 0.8) ?? const Color(0xFF050014),
+              const Color(0xFF050014),
+            ],
+            stops: const [0.0, 0.5],
+          ),
         ),
-        title: _AppBarTitle(song: song),
-        centerTitle: true,
-        actions: [
-          IconButton(
-            icon: Icon(
-              _showLyrics ? Icons.music_note_rounded : Icons.lyrics_rounded,
-              color: _showLyrics ? const Color(0xFF6C63FF) : Colors.white54,
-            ),
-            onPressed: () => setState(() => _showLyrics = !_showLyrics),
+        child: SafeArea(
+          child: Column(
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  IconButton(
+                    icon: const Icon(Icons.keyboard_arrow_down_rounded, size: 32),
+                    onPressed: () => Navigator.pop(context),
+                  ),
+                  _AppBarTitle(song: song),
+                  IconButton(
+                    icon: Icon(
+                      _showLyrics ? Icons.music_note_rounded : Icons.lyrics_rounded,
+                      color: _showLyrics ? const Color(0xFF00F0FF) : Colors.white54,
+                    ),
+                    onPressed: () => setState(() => _showLyrics = !_showLyrics),
+                  ),
+                ],
+              ),
+              // Album art or lyrics
+              Expanded(
+                child: _showLyrics
+                    ? _LyricsView(
+                        lyrics: _lyrics,
+                        loading: _loadingLyrics,
+                        currentIdx: lyricIdx,
+                      )
+                    : _buildAlbumArt(coverUrl, song),
+              ),
+
+              // Song info
+              _SongInfo(song: song),
+
+              // Progress bar
+              const _PlayerProgressBar(),
+
+              // Controls
+              const _PlayerControls(),
+              const SizedBox(height: 32),
+            ],
           ),
-        ],
-      ),
-      body: Column(
-        children: [
-          // Album art or lyrics
-          Expanded(
-            child: _showLyrics
-                ? _LyricsView(
-                    lyrics: _lyrics,
-                    loading: _loadingLyrics,
-                    currentIdx: lyricIdx,
-                  )
-                : _buildAlbumArt(coverUrl, song),
-          ),
-
-          // Song info
-          _SongInfo(song: song),
-
-          // Progress bar
-          const _PlayerProgressBar(),
-
-          // Controls
-          const _PlayerControls(),
-        ],
+        ),
       ),
     );
   }
@@ -125,13 +159,13 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
                   imageUrl: coverUrl,
                   fit: BoxFit.cover,
                   placeholder: (_, __) => Container(
-                    color: const Color(0xFF1E1E2E),
+                    color: const Color(0xFF160033),
                     child: const Icon(Icons.album_rounded,
                         color: Colors.white24, size: 80),
                   ),
                 )
               : Container(
-                  color: const Color(0xFF1E1E2E),
+                  color: const Color(0xFF160033),
                   child: const Icon(Icons.album_rounded,
                       color: Colors.white24, size: 80),
                 ),
@@ -196,13 +230,13 @@ class _SongInfo extends StatelessWidget {
               padding: const EdgeInsets.symmetric(
                   horizontal: 8, vertical: 3),
               decoration: BoxDecoration(
-                border: Border.all(color: const Color(0xFF6C63FF)),
+                border: Border.all(color: const Color(0xFF00F0FF)),
                 borderRadius: BorderRadius.circular(6),
               ),
               child: const Text('FLAC',
                   style: TextStyle(
                       fontSize: 11,
-                      color: Color(0xFF6C63FF),
+                      color: Color(0xFF00F0FF),
                       fontWeight: FontWeight.w700)),
             ),
         ],
@@ -239,7 +273,7 @@ class _PlayerProgressBar extends ConsumerWidget {
               trackHeight: 3,
               thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 6),
               overlayShape: const RoundSliderOverlayShape(overlayRadius: 14),
-              activeTrackColor: const Color(0xFF6C63FF),
+              activeTrackColor: const Color(0xFF00F0FF),
               inactiveTrackColor: Colors.white12,
               thumbColor: Colors.white,
               overlayColor: const Color(0x226C63FF),
@@ -284,70 +318,94 @@ class _PlayerControls extends ConsumerWidget {
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+      child: Column(
         children: [
-          IconButton(
-            icon: Icon(
-              Icons.shuffle_rounded,
-              color: isShuffling
-                  ? const Color(0xFF6C63FF)
-                  : Colors.white38,
-            ),
-            onPressed: () =>
-                player.setShuffling(!isShuffling),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              IconButton(
+                icon: const Icon(
+                  Icons.favorite_border_rounded,
+                  color: Colors.white,
+                ),
+                onPressed: () {}, // Future: Toggle favorite
+              ),
+              IconButton(
+                icon: const Icon(Icons.more_horiz_rounded, color: Colors.white),
+                onPressed: () {
+                  showModalBottomSheet(
+                    context: context,
+                    backgroundColor: Colors.transparent,
+                    builder: (context) => const SleepTimerSheet(),
+                  );
+                },
+              ),
+            ],
           ),
-          IconButton(
-            icon: const Icon(Icons.skip_previous_rounded, size: 36),
-            onPressed: () => player.previous(),
-          ),
-          Container(
-            width: 64,
-            height: 64,
-            decoration: const BoxDecoration(
-              shape: BoxShape.circle,
-              color: Color(0xFF6C63FF),
-            ),
-            child: isLoading
-                ? const Padding(
-                    padding: EdgeInsets.all(18),
-                    child: CircularProgressIndicator(
-                        color: Colors.white, strokeWidth: 2),
-                  )
-                : IconButton(
-                    icon: Icon(
-                      isPlaying
-                          ? Icons.pause_rounded
-                          : Icons.play_arrow_rounded,
-                      size: 36,
-                      color: Colors.white,
-                    ),
-                    onPressed: () => player.togglePlay(),
-                  ),
-          ),
-          IconButton(
-            icon: const Icon(Icons.skip_next_rounded, size: 36),
-            onPressed: () => player.next(),
-          ),
-          IconButton(
-            icon: Icon(
-              loopMode == LoopMode.off
-                  ? Icons.repeat_rounded
-                  : loopMode == LoopMode.all
+          const SizedBox(height: 16),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            children: [
+              IconButton(
+                icon: Icon(
+                  Icons.shuffle_rounded,
+                  color: isShuffling ? const Color(0xFF00F0FF) : Colors.white38,
+                ),
+                onPressed: () => player.setShuffling(!isShuffling),
+              ),
+              IconButton(
+                icon: const Icon(Icons.skip_previous_rounded, size: 40),
+                onPressed: () => player.previous(),
+              ),
+              Container(
+                width: 72,
+                height: 72,
+                decoration: const BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: Color(0xFF00F0FF),
+                ),
+                child: isLoading
+                    ? const Padding(
+                        padding: EdgeInsets.all(22),
+                        child: CircularProgressIndicator(
+                            color: Colors.white, strokeWidth: 2),
+                      )
+                    : IconButton(
+                        icon: Icon(
+                          isPlaying
+                              ? Icons.pause_rounded
+                              : Icons.play_arrow_rounded,
+                          size: 40,
+                          color: Colors.white,
+                        ),
+                        onPressed: () => player.togglePlay(),
+                      ),
+              ),
+              IconButton(
+                icon: const Icon(Icons.skip_next_rounded, size: 40),
+                onPressed: () => player.next(),
+              ),
+              IconButton(
+                icon: Icon(
+                  loopMode == LoopMode.off
                       ? Icons.repeat_rounded
-                      : Icons.repeat_one_rounded,
-              color: loopMode != LoopMode.off
-                  ? const Color(0xFF6C63FF)
-                  : Colors.white38,
-            ),
-            onPressed: () {
-              final next = loopMode == LoopMode.off
-                  ? LoopMode.all
-                  : loopMode == LoopMode.all
-                      ? LoopMode.one
-                      : LoopMode.off;
-              player.setCycling(next);
-            },
+                      : loopMode == LoopMode.all
+                          ? Icons.repeat_rounded
+                          : Icons.repeat_one_rounded,
+                  color: loopMode != LoopMode.off
+                      ? const Color(0xFF00F0FF)
+                      : Colors.white38,
+                ),
+                onPressed: () {
+                  final next = loopMode == LoopMode.off
+                      ? LoopMode.all
+                      : loopMode == LoopMode.all
+                          ? LoopMode.one
+                          : LoopMode.off;
+                  player.setCycling(next);
+                },
+              ),
+            ],
           ),
         ],
       ),

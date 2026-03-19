@@ -19,48 +19,22 @@ jobs:
         with:
           distribution: 'zulu'
           java-version: '17'
+          cache: 'gradle'
 
       - uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.41.2'
+          flutter-version: 'any'
           channel: 'stable'
           cache: true
-
-      - name: Cache pub dependencies
-        uses: actions/cache@v4
-        with:
-          path: ~/.pub-cache
-          key: ${{ runner.os }}-pub-${{ hashFiles('pubspec.lock') }}
-          restore-keys: ${{ runner.os }}-pub-
-
-      - name: Cache Gradle
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.gradle/caches
-            ~/.gradle/wrapper
-            /usr/local/lib/android/sdk/ndk
-            /usr/local/lib/android/sdk/cmake
-          key: ${{ runner.os }}-gradle-${{ hashFiles('android/gradle/wrapper/gradle-wrapper.properties') }}
-          restore-keys: ${{ runner.os }}-gradle-
-
-      - name: Fix android config
-        run: |
-          sed -i '/android.aapt2FromMavenOverride/d' android/gradle.properties
-          sed -i 's/compileSdk = 3[0-9]/compileSdk = 36/' android/app/build.gradle.kts
-          sed -i 's/targetSdk = 3[0-9]/targetSdk = 36/' android/app/build.gradle.kts
-          sed -i 's/version "8\.[0-9]\.[0-9]"/version "8.6.0"/' android/settings.gradle.kts
-          echo 'android.enableJetifier=false' >> android/gradle.properties
 
       - name: Flutter pub get
         run: flutter pub get
 
+      - name: Flutter analyze
+        run: flutter analyze
+
       - name: Build APK
-        run: |
-          flutter build apk --release \
-            --dart-define=NAVIDROME_URL=${{ secrets.NAVIDROME_URL }} \
-            --dart-define=NAVIDROME_USER=${{ secrets.NAVIDROME_USER }} \
-            --dart-define=NAVIDROME_PASS=${{ secrets.NAVIDROME_PASS }}
+        run: flutter build apk --release
 
       - name: Rename APK
         run: |

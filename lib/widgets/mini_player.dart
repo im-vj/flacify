@@ -25,7 +25,7 @@ class MiniPlayer extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final navidrome = ref.read(navidromeServiceProvider);
     final playerState = ref.watch(playerProvider);
-    final coverUrl = navidrome.coverArtUrl(song.coverArtId, size: 128);
+    final coverUrl = navidrome?.coverArtUrl(song.coverArtId, size: 128) ?? '';
 
     final progress = playerState.duration.inMilliseconds > 0
         ? playerState.position.inMilliseconds /
@@ -36,7 +36,7 @@ class MiniPlayer extends ConsumerWidget {
       onTap: onTap,
       child: Container(
         decoration: BoxDecoration(
-          color: const Color(0xFF1E1E2E),
+          color: const Color(0xFF160033),
           borderRadius: BorderRadius.circular(14),
           boxShadow: [
             BoxShadow(
@@ -65,7 +65,7 @@ class MiniPlayer extends ConsumerWidget {
                         : Container(
                             width: 44,
                             height: 44,
-                            color: const Color(0xFF2E2E3E),
+                            color: const Color(0xFF270054),
                             child: const Icon(Icons.music_note_rounded,
                                 color: Colors.white24),
                           ),
@@ -115,7 +115,7 @@ class MiniPlayer extends ConsumerWidget {
                 value: progress.clamp(0.0, 1.0),
                 minHeight: 2,
                 backgroundColor: Colors.white12,
-                valueColor: const AlwaysStoppedAnimation(Color(0xFF6C63FF)),
+                valueColor: const AlwaysStoppedAnimation(Color(0xFF00F0FF)),
               ),
             ),
           ],

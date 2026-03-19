@@ -17,6 +17,16 @@ class NavidromeService {
     required this.password,
   });
 
+  Future<void> ping() async {
+    final response = await _dio.get(
+      '$baseUrl/rest/ping',
+      queryParameters: _auth,
+    );
+    if (response.statusCode != 200 || response.data['subsonic-response']['status'] == 'failed') {
+      throw Exception(response.data['subsonic-response']['error']?['message'] ?? 'Connection failed');
+    }
+  }
+
   Map<String, String> get _auth {
     const salt = 'flacify2024';
     final token = md5.convert(utf8.encode(password + salt)).toString();
