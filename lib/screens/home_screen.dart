@@ -1,3 +1,4 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/song.dart';
@@ -41,9 +42,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           _tabs[_tab],
           if (playerState.queue.isNotEmpty)
             Positioned(
-              left: 8,
-              right: 8,
-              bottom: 8, // Positioned just above the bottom nav bar
+              left: 12,
+              right: 12,
+              bottom: 12,
               child: MiniPlayer(
                 song: player.currentSong!,
                 isPlaying: playerState.isPlaying,
@@ -57,16 +58,82 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             ),
         ],
       ),
-      bottomNavigationBar: NavigationBar(
-        backgroundColor: const Color(0xFF0A001F),
+      bottomNavigationBar: _ChoraBottomNav(
         selectedIndex: _tab,
         onDestinationSelected: (i) => setState(() => _tab = i),
-        destinations: const [
-          NavigationDestination(icon: Icon(Icons.home_rounded), label: 'Home'),
-          NavigationDestination(icon: Icon(Icons.search_rounded), label: 'Search'),
-          NavigationDestination(icon: Icon(Icons.library_music_rounded), label: 'Library'),
-          NavigationDestination(icon: Icon(Icons.radio_rounded), label: 'Radio'),
-        ],
+      ),
+    );
+  }
+}
+
+/// Chora-style bottom nav with indicator pill
+class _ChoraBottomNav extends StatelessWidget {
+  final int selectedIndex;
+  final ValueChanged<int> onDestinationSelected;
+
+  const _ChoraBottomNav({
+    required this.selectedIndex,
+    required this.onDestinationSelected,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    const items = [
+      (icon: Icons.home_rounded, label: 'Home'),
+      (icon: Icons.search_rounded, label: 'Search'),
+      (icon: Icons.library_music_rounded, label: 'Library'),
+      (icon: Icons.radio_rounded, label: 'Radio'),
+    ];
+
+    return Container(
+      color: Colors.black.withValues(alpha: 0.85),
+      child: SafeArea(
+        top: false,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 6),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
+            children: List.generate(items.length, (i) {
+              final isSelected = i == selectedIndex;
+              return GestureDetector(
+                onTap: () => onDestinationSelected(i),
+                behavior: HitTestBehavior.opaque,
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 200),
+                  curve: Curves.easeInOut,
+                  padding: EdgeInsets.symmetric(
+                    horizontal: isSelected ? 16 : 12,
+                    vertical: 8,
+                  ),
+                  decoration: BoxDecoration(
+                    color: isSelected ? Colors.white.withValues(alpha: 0.14) : Colors.transparent,
+                    borderRadius: BorderRadius.circular(24),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(
+                        items[i].icon,
+                        color: isSelected ? Colors.white : Colors.white38,
+                        size: 24,
+                      ),
+                      if (isSelected) ...[
+                        const SizedBox(width: 8),
+                        Text(
+                          items[i].label,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w600,
+                            fontSize: 13,
+                          ),
+                        ),
+                      ]
+                    ],
+                  ),
+                ),
+              );
+            }),
+          ),
+        ),
       ),
     );
   }
@@ -81,10 +148,12 @@ class _HomeTab extends ConsumerWidget {
       sliver: SliverToBoxAdapter(
         child: Text(
           title,
-          style: Theme.of(context)
-              .textTheme
-              .titleLarge
-              ?.copyWith(fontWeight: FontWeight.w800),
+          style: const TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.w700,
+            color: Colors.white,
+            letterSpacing: -0.3,
+          ),
         ),
       ),
     );
@@ -94,20 +163,20 @@ class _HomeTab extends ConsumerWidget {
     final player = ref.read(playerProvider.notifier);
     return songsAsync.when(
       loading: () => const SliverToBoxAdapter(
-        child: SizedBox(height: 120, child: Center(child: CircularProgressIndicator())),
+        child: SizedBox(height: 180, child: Center(child: CircularProgressIndicator(color: Colors.white38))),
       ),
       error: (e, _) => SliverToBoxAdapter(
-        child: SizedBox(height: 120, child: Center(child: Text('Error: $e'))),
+        child: SizedBox(height: 100, child: Center(child: Text('Error: $e', style: const TextStyle(color: Colors.white38)))),
       ),
       data: (songs) {
         if (songs.isEmpty) {
           return const SliverToBoxAdapter(
-            child: SizedBox(height: 120, child: Center(child: Text('No songs found'))),
+            child: SizedBox(height: 100, child: Center(child: Text('No songs', style: TextStyle(color: Colors.white38)))),
           );
         }
         return SliverToBoxAdapter(
           child: SizedBox(
-            height: 240,
+            height: 210,
             child: ListView.builder(
               scrollDirection: Axis.horizontal,
               padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -116,40 +185,60 @@ class _HomeTab extends ConsumerWidget {
                 final song = songs[index];
                 final navidrome = ref.read(navidromeServiceProvider);
                 final coverUrl = navidrome?.coverArtUrl(song.coverArtId) ?? '';
-                
+
                 return GestureDetector(
-                   onTap: () => player.playQueue(songs, index: index),
-                   child: Container(
-                     width: 140,
-                     margin: const EdgeInsets.only(right: 16),
-                     child: Column(
-                       crossAxisAlignment: CrossAxisAlignment.start,
-                       children: [
-                         ClipRRect(
-                           borderRadius: BorderRadius.circular(12),
-                           child: AspectRatio(
-                             aspectRatio: 1,
-                             child: coverUrl.isNotEmpty
-                                 ? Image.network(coverUrl, fit: BoxFit.cover)
-                                 : Container(color: Colors.white12, child: const Icon(Icons.music_note)),
-                           ),
-                         ),
-                         const SizedBox(height: 8),
-                         Text(
-                           song.title,
-                           maxLines: 1,
-                           overflow: TextOverflow.ellipsis,
-                           style: const TextStyle(fontWeight: FontWeight.w600),
-                         ),
-                         Text(
-                           song.artist,
-                           maxLines: 1,
-                           overflow: TextOverflow.ellipsis,
-                           style: const TextStyle(color: Colors.white54, fontSize: 12),
-                         ),
-                       ],
-                     ),
-                   ),
+                  onTap: () => player.playQueue(songs, index: index),
+                  child: Container(
+                    width: 148,
+                    margin: const EdgeInsets.only(right: 14),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Album art with play overlay
+                        Stack(
+                          children: [
+                            ClipRRect(
+                              borderRadius: BorderRadius.circular(14),
+                              child: AspectRatio(
+                                aspectRatio: 1,
+                                child: coverUrl.isNotEmpty
+                                    ? CachedNetworkImage(imageUrl: coverUrl, fit: BoxFit.cover)
+                                    : Container(
+                                        color: Colors.white10,
+                                        child: const Icon(Icons.music_note_rounded, color: Colors.white24, size: 40)),
+                              ),
+                            ),
+                            Positioned(
+                              bottom: 8,
+                              right: 8,
+                              child: Container(
+                                width: 34,
+                                height: 34,
+                                decoration: BoxDecoration(
+                                  color: Colors.black.withValues(alpha: 0.55),
+                                  shape: BoxShape.circle,
+                                ),
+                                child: const Icon(Icons.play_arrow_rounded, color: Colors.white, size: 22),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          song.title,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(fontWeight: FontWeight.w600, color: Colors.white, fontSize: 13),
+                        ),
+                        Text(
+                          song.artist,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(color: Colors.white54, fontSize: 11),
+                        ),
+                      ],
+                    ),
+                  ),
                 );
               },
             ),
@@ -163,95 +252,97 @@ class _HomeTab extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final albums = ref.watch(albumsProvider);
     final recommended = ref.watch(recommendedSongsProvider);
-    // Ideally we'd have dedicated providers for recently added/played from Navidrome
-    // but for now, we'll reuse starredProvider as a placeholder for 'Recently Added'
-    final recentlyAdded = ref.watch(starredProvider); 
+    final recentlyAdded = ref.watch(starredProvider);
+    final server = ref.watch(activeServerProvider);
+    final username = server?.username ?? 'Music Lover';
 
-    return SafeArea(
-      child: CustomScrollView(
-        slivers: [
-          SliverPadding(
-            padding: const EdgeInsets.fromLTRB(16, 24, 16, 8),
-            sliver: SliverToBoxAdapter(
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Column(
+    return CustomScrollView(
+      slivers: [
+        // Chora-style greeting header
+        SliverToBoxAdapter(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(20, 56, 20, 8),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Flacify',
-                        style: Theme.of(context).textTheme.headlineLarge?.copyWith(
-                              fontWeight: FontWeight.w800,
-                              color: const Color(0xFF00F0FF),
-                            ),
+                        'Welcome,',
+                        style: TextStyle(
+                          fontSize: 16,
+                          color: Colors.white.withValues(alpha: 0.55),
+                          fontWeight: FontWeight.w400,
+                        ),
                       ),
-                      const SizedBox(height: 4),
                       Text(
-                        'Hi-Fi music from your server',
-                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                              color: Colors.white38,
-                            ),
+                        username,
+                        style: const TextStyle(
+                          fontSize: 30,
+                          fontWeight: FontWeight.w800,
+                          color: Colors.white,
+                          letterSpacing: -0.8,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
                     ],
                   ),
-                  IconButton(
-                    icon: const Icon(Icons.settings, color: Colors.white54),
-                    onPressed: () => Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (_) => const SettingsScreen()),
-                    ),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.settings_outlined, color: Colors.white54, size: 26),
+                  onPressed: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const SettingsScreen()),
                   ),
-                ],
+                ),
+              ],
+            ),
+          ),
+        ),
+
+        _buildSectionTitle(context, 'Recommended for you'),
+        _buildHorizontalSongList(recommended, ref),
+
+        _buildSectionTitle(context, 'Recently Added'),
+        _buildHorizontalSongList(recentlyAdded, ref),
+
+        _buildSectionTitle(context, 'Albums'),
+        albums.when(
+          loading: () => const SliverFillRemaining(
+            child: Center(child: CircularProgressIndicator(color: Colors.white38)),
+          ),
+          error: (e, _) => SliverFillRemaining(
+            child: Center(child: Text('Error: $e', style: const TextStyle(color: Colors.white38))),
+          ),
+          data: (list) => SliverPadding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 120),
+            sliver: SliverGrid(
+              // Chora-style 3-column grid
+              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: 3,
+                crossAxisSpacing: 10,
+                mainAxisSpacing: 10,
+                childAspectRatio: 0.78,
+              ),
+              delegate: SliverChildBuilderDelegate(
+                (ctx, i) => AlbumCard(
+                  album: list[i],
+                  compact: true,
+                  onTap: () => Navigator.push(
+                    ctx,
+                    MaterialPageRoute(builder: (_) => AlbumScreen(album: list[i])),
+                  ),
+                ),
+                childCount: list.length,
               ),
             ),
           ),
-          
-          _buildSectionTitle(context, 'Recommendations Matches'),
-          _buildHorizontalSongList(recommended, ref),
-
-          _buildSectionTitle(context, 'Recently Added / Starred'),
-          _buildHorizontalSongList(recentlyAdded, ref),
-
-          _buildSectionTitle(context, 'All Albums'),
-          albums.when(
-            loading: () => const SliverFillRemaining(
-              child: Center(child: CircularProgressIndicator()),
-            ),
-            error: (e, _) => SliverFillRemaining(
-              child: Center(
-                child: Text('Error: $e',
-                    style: const TextStyle(color: Colors.red)),
-              ),
-            ),
-            data: (list) => SliverPadding(
-              padding: const EdgeInsets.all(16),
-              sliver: SliverGrid(
-                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: 2,
-                  crossAxisSpacing: 12,
-                  mainAxisSpacing: 12,
-                  childAspectRatio: 0.78,
-                ),
-                delegate: SliverChildBuilderDelegate(
-                  (ctx, i) => AlbumCard(
-                    album: list[i],
-                    onTap: () => Navigator.push(
-                      ctx,
-                      MaterialPageRoute(
-                        builder: (_) => AlbumScreen(album: list[i]),
-                      ),
-                    ),
-                  ),
-                  childCount: list.length,
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 }
-
