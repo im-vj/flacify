@@ -45,7 +45,7 @@ jobs:
       - name: Fix android config
         run: |
           sed -i '/android.aapt2FromMavenOverride/d' android/gradle.properties
-          sed -i 's/compileSdk = 34/compileSdk = 35/' android/app/build.gradle.kts
+          sed -i 's/compileSdk = 34/compileSdk = 36/' android/app/build.gradle.kts
           sed -i 's/targetSdk = 34/targetSdk = 35/' android/app/build.gradle.kts
           sed -i 's/version "8.3.2"/version "8.6.0"/' android/settings.gradle.kts
 
