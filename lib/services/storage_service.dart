@@ -7,11 +7,13 @@ class StorageService {
 
   late Box<ServerConfig> _serverBox;
   late Box _settingsBox;
+  late Box<String> _downloadsBox;
 
   Future<void> init() async {
     Hive.registerAdapter(ServerConfigAdapter());
     _serverBox = await Hive.openBox<ServerConfig>(_serverBoxName);
     _settingsBox = await Hive.openBox('settings');
+    _downloadsBox = await Hive.openBox<String>('downloads');
   }
 
   List<ServerConfig> getServers() {
@@ -41,5 +43,25 @@ class StorageService {
     if (getActiveServer()?.id == id) {
       await _settingsBox.delete(_activeServerKey);
     }
+  }
+
+  int? getMaxBitrate() {
+    return _settingsBox.get('maxBitrate') as int?;
+  }
+
+  Future<void> setMaxBitrate(int? bitrate) async {
+    if (bitrate == null) {
+      await _settingsBox.delete('maxBitrate');
+    } else {
+      await _settingsBox.put('maxBitrate', bitrate);
+    }
+  }
+
+  String? getDownloadedPath(String songId) {
+    return _downloadsBox.get(songId);
+  }
+
+  Future<void> saveDownloadedPath(String songId, String path) async {
+    await _downloadsBox.put(songId, path);
   }
 }

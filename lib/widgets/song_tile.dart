@@ -1,9 +1,11 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:hive_flutter/hive_flutter.dart';
 import '../models/song.dart';
 import '../providers/navidrome_provider.dart';
 import '../providers/player_provider.dart';
+import '../services/download_service.dart';
 
 class SongTile extends ConsumerWidget {
   final Song song;
@@ -77,11 +79,28 @@ class SongTile extends ConsumerWidget {
           color: isCurrent ? const Color(0xFF00F0FF) : Colors.white,
         ),
       ),
-      subtitle: Text(
-        song.artist,
-        maxLines: 1,
-        overflow: TextOverflow.ellipsis,
-        style: const TextStyle(color: Colors.white38, fontSize: 12),
+      subtitle: Row(
+        children: [
+          ValueListenableBuilder(
+            valueListenable: Hive.box<String>('downloads').listenable(keys: [song.id]),
+            builder: (context, box, _) {
+              final isDl = box.containsKey(song.id) && box.get(song.id)!.isNotEmpty;
+              if (!isDl) return const SizedBox.shrink();
+              return const Padding(
+                padding: EdgeInsets.only(right: 6),
+                child: Icon(Icons.offline_pin_rounded, color: Color(0xFF00F0FF), size: 14),
+              );
+            },
+          ),
+          Expanded(
+            child: Text(
+              song.artist,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(color: Colors.white38, fontSize: 12),
+            ),
+          ),
+        ],
       ),
       trailing: Row(
         mainAxisSize: MainAxisSize.min,
@@ -142,6 +161,24 @@ class SongTile extends ConsumerWidget {
             leading: const Icon(Icons.queue_music_rounded),
             title: const Text('Add to queue'),
             onTap: () { Navigator.pop(context); },
+          ),
+          ValueListenableBuilder(
+            valueListenable: Hive.box<String>('downloads').listenable(keys: [song.id]),
+            builder: (context, box, _) {
+              final isDl = box.containsKey(song.id) && box.get(song.id)!.isNotEmpty;
+              return ListTile(
+                leading: Icon(isDl ? Icons.remove_circle_outline_rounded : Icons.download_rounded),
+                title: Text(isDl ? 'Remove download' : 'Download for offline'),
+                onTap: () {
+                  Navigator.pop(context);
+                  if (isDl) {
+                    ref.read(downloadServiceProvider).deleteSong(song);
+                  } else {
+                    ref.read(downloadServiceProvider).downloadSong(song);
+                  }
+                },
+              );
+            },
           ),
         ],
       ),

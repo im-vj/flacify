@@ -8,12 +8,20 @@ import 'screens/login_screen.dart';
 import 'providers/navidrome_provider.dart';
 import 'services/storage_service.dart';
 
+import 'package:just_audio_background/just_audio_background.dart';
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Hive.initFlutter();
   
   final storageService = StorageService();
   await storageService.init();
+
+  await JustAudioBackground.init(
+    androidNotificationChannelId: 'com.imvj.flacify.channel.audio',
+    androidNotificationChannelName: 'Audio playback',
+    androidNotificationOngoing: true,
+  );
 
   SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
     statusBarColor: Colors.transparent,

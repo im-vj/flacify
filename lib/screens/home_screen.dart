@@ -10,6 +10,8 @@ import 'album_screen.dart';
 import 'search_screen.dart';
 import 'player_screen.dart';
 import 'library_screen.dart';
+import 'settings_screen.dart';
+import 'radio_screen.dart';
 
 class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
@@ -25,6 +27,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     _HomeTab(),
     SearchScreen(),
     LibraryScreen(),
+    RadioScreen(),
   ];
 
   @override
@@ -62,6 +65,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           NavigationDestination(icon: Icon(Icons.home_rounded), label: 'Home'),
           NavigationDestination(icon: Icon(Icons.search_rounded), label: 'Search'),
           NavigationDestination(icon: Icon(Icons.library_music_rounded), label: 'Library'),
+          NavigationDestination(icon: Icon(Icons.radio_rounded), label: 'Radio'),
         ],
       ),
     );
@@ -169,22 +173,35 @@ class _HomeTab extends ConsumerWidget {
           SliverPadding(
             padding: const EdgeInsets.fromLTRB(16, 24, 16, 8),
             sliver: SliverToBoxAdapter(
-              child: Column(
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    'Flacify',
-                    style: Theme.of(context).textTheme.headlineLarge?.copyWith(
-                          fontWeight: FontWeight.w800,
-                          color: const Color(0xFF00F0FF),
-                        ),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Flacify',
+                        style: Theme.of(context).textTheme.headlineLarge?.copyWith(
+                              fontWeight: FontWeight.w800,
+                              color: const Color(0xFF00F0FF),
+                            ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'Hi-Fi music from your server',
+                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                              color: Colors.white38,
+                            ),
+                      ),
+                    ],
                   ),
-                  const SizedBox(height: 4),
-                  Text(
-                    'Hi-Fi music from your server',
-                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          color: Colors.white38,
-                        ),
+                  IconButton(
+                    icon: const Icon(Icons.settings, color: Colors.white54),
+                    onPressed: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => const SettingsScreen()),
+                    ),
                   ),
                 ],
               ),

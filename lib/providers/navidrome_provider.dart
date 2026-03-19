@@ -16,13 +16,30 @@ final activeServerProvider = Provider<ServerConfig?>((ref) {
   return storage.getActiveServer();
 });
 
+class BitrateNotifier extends StateNotifier<int?> {
+  final StorageService _storage;
+  BitrateNotifier(this._storage) : super(_storage.getMaxBitrate());
+
+  Future<void> setBitrate(int? bitrate) async {
+    await _storage.setMaxBitrate(bitrate);
+    state = bitrate;
+  }
+}
+
+final bitrateProvider = StateNotifierProvider<BitrateNotifier, int?>((ref) {
+  final storage = ref.watch(storageProvider);
+  return BitrateNotifier(storage);
+});
+
 final navidromeServiceProvider = Provider<NavidromeService?>((ref) {
   final server = ref.watch(activeServerProvider);
+  final bitrate = ref.watch(bitrateProvider);
   if (server == null) return null;
   return NavidromeService(
     baseUrl: server.url,
     username: server.username,
     password: server.password,
+    maxBitrate: bitrate,
   );
 });
 

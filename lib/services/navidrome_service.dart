@@ -5,17 +5,20 @@ import '../models/song.dart';
 import '../models/album.dart';
 import '../models/artist.dart';
 import '../models/playlist.dart';
+import '../models/radio_station.dart';
 
 class NavidromeService {
   final String baseUrl;
   final String username;
   final String password;
+  final int? maxBitrate;
   final Dio _dio = Dio();
 
   NavidromeService({
     required this.baseUrl,
     required this.username,
     required this.password,
+    this.maxBitrate,
   });
 
   Future<void> ping() async {
@@ -110,6 +113,17 @@ class NavidromeService {
     return playlists.map((p) => Playlist.fromJson(p)).toList();
   }
 
+  Future<List<RadioStation>> getInternetRadioStations() async {
+    final res = await _dio.get(
+      '$baseUrl/rest/getInternetRadioStations',
+      queryParameters: _auth,
+    );
+    final data = res.data['subsonic-response'];
+    if (data['status'] != 'ok') throw Exception(data['error']['message']);
+    final stations = data['internetRadioStations']['internetRadioStation'] as List? ?? [];
+    return stations.map((s) => RadioStation.fromJson(s)).toList();
+  }
+
   Future<List<Song>> getPlaylistSongs(String playlistId) async {
     final res = await _dio.get(
       '$baseUrl/rest/getPlaylist',
@@ -147,7 +161,10 @@ class NavidromeService {
   }
 
   String streamUrl(String songId) {
-    final p = {..._auth, 'id': songId, 'format': 'raw'};
+    final p = {..._auth, 'id': songId, 'format': maxBitrate != null ? 'mp3' : 'raw'};
+    if (maxBitrate != null) {
+      p['maxBitRate'] = maxBitrate.toString();
+    }
     return '$baseUrl/rest/stream?${_encode(p)}';
   }
 

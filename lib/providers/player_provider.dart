@@ -1,16 +1,19 @@
 import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:just_audio/just_audio.dart';
+import 'package:just_audio_background/just_audio_background.dart';
 import '../models/song.dart';
 import '../services/navidrome_service.dart';
+import '../services/storage_service.dart';
 import 'navidrome_provider.dart';
 
 class PlayerNotifier extends StateNotifier<PlayerState> {
   final NavidromeService? _navidrome;
+  final StorageService? _storage;
   final AudioPlayer _player = AudioPlayer();
   Timer? _sleepTimer;
 
-  PlayerNotifier(this._navidrome) : super(PlayerState()) {
+  PlayerNotifier(this._navidrome, this._storage) : super(PlayerState()) {
     _player.playerStateStream.listen((s) {
       state = state.copyWith(
         isPlaying: s.playing,
@@ -36,9 +39,28 @@ class PlayerNotifier extends StateNotifier<PlayerState> {
   Future<void> playQueue(List<Song> songs, {int index = 0}) async {
     if (_navidrome == null) return;
     state = state.copyWith(queue: songs, currentIndex: index);
-    final sources = songs
-        .map((s) => AudioSource.uri(Uri.parse(_navidrome!.streamUrl(s.id))))
-        .toList();
+    
+    final sources = <AudioSource>[];
+    for (final s in songs) {
+      final localPath = _storage?.getDownloadedPath(s.id);
+      final uri = (localPath != null && localPath.isNotEmpty)
+          ? Uri.file(localPath)
+          : Uri.parse(_navidrome!.streamUrl(s.id));
+
+      sources.add(
+        AudioSource.uri(
+          uri,
+          tag: MediaItem(
+            id: s.id,
+            album: s.album,
+            title: s.title,
+            artist: s.artist,
+            artUri: Uri.parse(_navidrome!.coverArtUrl(s.coverArtId)),
+            extras: {'isOffline': localPath != null && localPath.isNotEmpty},
+          ),
+        ),
+      );
+    }
     await _player.setAudioSource(
       ConcatenatingAudioSource(children: sources),
       initialIndex: index,
@@ -145,5 +167,7 @@ class PlayerState {
 
 final playerProvider =
     StateNotifierProvider<PlayerNotifier, PlayerState>((ref) {
-  return PlayerNotifier(ref.watch(navidromeServiceProvider));
+  final service = ref.watch(navidromeServiceProvider);
+  final storage = ref.watch(storageProvider);
+  return PlayerNotifier(service, storage);
 });

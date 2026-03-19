@@ -7,6 +7,7 @@ import 'package:palette_generator/palette_generator.dart';
 import '../models/song.dart';
 import '../providers/navidrome_provider.dart';
 import '../providers/player_provider.dart';
+import '../services/cast_service.dart';
 import '../services/lyrics_service.dart';
 import '../widgets/bottom_sheets/sleep_timer_sheet.dart';
 
@@ -117,6 +118,33 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
                       color: _showLyrics ? const Color(0xFF00F0FF) : Colors.white54,
                     ),
                     onPressed: () => setState(() => _showLyrics = !_showLyrics),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.cast_rounded, color: Colors.white54),
+                    onPressed: () async {
+                      final service = ref.read(castServiceProvider);
+                      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Discovering cast devices...')));
+                      final devices = await service.discoverDevices();
+                      if (!context.mounted) return;
+                      showModalBottomSheet(
+                        context: context,
+                        builder: (_) => ListView(
+                          children: [
+                            const ListTile(title: Text('Cast to Device', style: TextStyle(fontWeight: FontWeight.bold))),
+                            if (devices.isEmpty) const ListTile(title: Text('No devices found')),
+                            for (final d in devices)
+                              ListTile(
+                                leading: const Icon(Icons.tv_rounded),
+                                title: Text(d.name),
+                                onTap: () {
+                                  Navigator.pop(context);
+                                  service.connectAndPlay(d, song);
+                                },
+                              )
+                          ],
+                        ),
+                      );
+                    },
                   ),
                 ],
               ),
