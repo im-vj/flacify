@@ -30,3 +30,6 @@ android {
 flutter {
     source = "../.."
 }
+
+// Disable NDK/CMake - no native C++ code in this app
+android.defaultConfig.externalNativeBuild.cmake.targets.clear()
