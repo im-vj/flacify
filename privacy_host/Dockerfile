@@ -1,6 +1,7 @@
 FROM nginx:alpine
-# Copy the privacy policy and serve it as the default index.html
-COPY privacy_policy.html /usr/share/nginx/html/index.html
+# Copy all HTML/CSS files into the NGINX web root
+COPY index.html /usr/share/nginx/html/
+COPY privacy /usr/share/nginx/html/privacy/
 
 # Expose port 80
 EXPOSE 80

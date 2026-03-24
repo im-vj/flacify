@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Flacify - Self-Hosted Music Player</title>
+    <style>
+        :root {
+            --bg-color: #0d0d14;
+            --surface: #1a1a24;
+            --accent: #b388ff;
+            --text-main: #ffffff;
+            --text-muted: #8e8e93;
+        }
+        * { box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            overflow-x: hidden;
+        }
+        
+        .hero {
+            padding: 80px 20px 40px;
+            text-align: center;
+            max-width: 900px;
+            margin: 0 auto;
+        }
+        .logo {
+            width: 130px;
+            height: 130px;
+            border-radius: 30px;
+            margin-bottom: 24px;
+            box-shadow: 0 15px 35px rgba(179, 136, 255, 0.2);
+            border: 2px solid rgba(255,255,255,0.05);
+        }
+        .hero h1 {
+            font-size: 4.5rem;
+            margin: 0 0 20px 0;
+            background: linear-gradient(135deg, #b388ff, #ff8a80);
+            background-clip: text;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            letter-spacing: -2px;
+        }
+        .hero p {
+            font-size: 1.4rem;
+            color: var(--text-muted);
+            margin-bottom: 40px;
+            line-height: 1.5;
+        }
+        .btn-download {
+            display: inline-block;
+            background-color: var(--accent);
+            color: var(--bg-color);
+            padding: 16px 36px;
+            border-radius: 30px;
+            font-size: 1.1rem;
+            font-weight: bold;
+            text-decoration: none;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        .btn-download:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(179, 136, 255, 0.4);
+        }
+
+        /* Screenshot Gallery */
+        .gallery-wrapper {
+            width: 100%;
+            overflow: hidden;
+            padding: 40px 0;
+            background: linear-gradient(to bottom, transparent, var(--surface) 50%, transparent);
+        }
+        .gallery {
+            display: flex;
+            gap: 20px;
+            padding: 0 50%;
+            overflow-x: auto;
+            scroll-snap-type: x mandatory;
+            scroll-behavior: smooth;
+        }
+        .gallery::-webkit-scrollbar { display: none; }
+        .app-screenshot {
+            flex: 0 0 auto;
+            width: 280px;
+            height: 600px;
+            border-radius: 30px;
+            border: 6px solid #222;
+            background-color: #000;
+            scroll-snap-align: center;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.5);
+            object-fit: cover;
+        }
+
+        /* Features */
+        .features-container {
+            max-width: 1000px;
+            margin: 80px auto;
+            padding: 0 20px;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 30px;
+        }
+        .feature-card {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 20px;
+            padding: 30px;
+            transition: border-color 0.3s, transform 0.3s;
+        }
+        .feature-card:hover {
+            border-color: rgba(179, 136, 255, 0.5);
+            transform: translateY(-5px);
+        }
+        .feature-icon {
+            font-size: 2.5rem;
+            margin-bottom: 20px;
+        }
+        .feature-card h3 {
+            font-size: 1.4rem;
+            margin: 0 0 10px 0;
+            color: #fff;
+        }
+        .feature-card p {
+            color: var(--text-muted);
+            line-height: 1.6;
+            margin: 0;
+        }
+
+        /* Footer */
+        .footer {
+            text-align: center;
+            padding: 40px;
+            border-top: 1px solid rgba(255,255,255,0.05);
+            color: var(--text-muted);
+        }
+        .footer a {
+            color: var(--accent);
+            text-decoration: none;
+        }
+        .footer a:hover { text-decoration: underline; }
+
+        @media (max-width: 768px) {
+            .hero h1 { font-size: 3rem; }
+            .hero p { font-size: 1.1rem; }
+            .app-screenshot { width: 240px; height: 510px; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="hero">
+        <img src="assets/logo.png" class="logo" alt="Flacify Logo" onerror="this.style.display='none'">
+        <h1>Flacify</h1>
+        <p>The ultimate self-hosted companion for your Navidrome server. Stream true lossless audio, generate intelligent AI mixes, and take control of your music library.</p>
+        <a href="#" class="btn-download">Get on Google Play</a>
+    </div>
+
+    <!-- Screenshots Section -->
+    <div class="gallery-wrapper">
+        <div class="gallery">
+            <img class="app-screenshot" src="assets/home.jpg" alt="Home Screen" onerror="this.src='data:image/svg+xml;utf8,<svg xmlns=\'http://www.w3.org/2000/svg\' width=\'280\' height=\'600\'><rect width=\'100%\' height=\'100%\' fill=\'%23111\'/><text x=\'50%\' y=\'50%\' fill=\'%23555\' text-anchor=\'middle\' dy=\'.3em\'>home.jpg Placeholder</text></svg>'">
+            <img class="app-screenshot" src="assets/songs.jpg" alt="All Songs" onerror="this.src='data:image/svg+xml;utf8,<svg xmlns=\'http://www.w3.org/2000/svg\' width=\'280\' height=\'600\'><rect width=\'100%\' height=\'100%\' fill=\'%23111\'/><text x=\'50%\' y=\'50%\' fill=\'%23555\' text-anchor=\'middle\' dy=\'.3em\'>songs.jpg Placeholder</text></svg>'">
+            <img class="app-screenshot" src="assets/albums.jpg" alt="Albums Grid" onerror="this.src='data:image/svg+xml;utf8,<svg xmlns=\'http://www.w3.org/2000/svg\' width=\'280\' height=\'600\'><rect width=\'100%\' height=\'100%\' fill=\'%23111\'/><text x=\'50%\' y=\'50%\' fill=\'%23555\' text-anchor=\'middle\' dy=\'.3em\'>albums.jpg Placeholder</text></svg>'">
+            <img class="app-screenshot" src="assets/artists.jpg" alt="Artists List" onerror="this.src='data:image/svg+xml;utf8,<svg xmlns=\'http://www.w3.org/2000/svg\' width=\'280\' height=\'600\'><rect width=\'100%\' height=\'100%\' fill=\'%23111\'/><text x=\'50%\' y=\'50%\' fill=\'%23555\' text-anchor=\'middle\' dy=\'.3em\'>artists.jpg Placeholder</text></svg>'">
+            <img class="app-screenshot" src="assets/settings.jpg" alt="Settings & AI" onerror="this.src='data:image/svg+xml;utf8,<svg xmlns=\'http://www.w3.org/2000/svg\' width=\'280\' height=\'600\'><rect width=\'100%\' height=\'100%\' fill=\'%23111\'/><text x=\'50%\' y=\'50%\' fill=\'%23555\' text-anchor=\'middle\' dy=\'.3em\'>settings.jpg Placeholder</text></svg>'">
+        </div>
+    </div>
+
+    <!-- Features Section -->
+    <div class="features-container">
+        <div class="feature-card">
+            <div class="feature-icon">🎧</div>
+            <h3>True Lossless FLAC</h3>
+            <p>Experience your music exactly as it was meant to be heard. Flacify streams uncompressed FLAC directly from your server, with options to transcode to 320kbps or 128kbps to save data on the go.</p>
+        </div>
+        <div class="feature-card">
+            <div class="feature-icon">🤖</div>
+            <h3>Multi-AI DJ</h3>
+            <p>Bring your own API key to generate intelligent mixes. Seamlessly switch between Google Gemini, Anthropic Claude, OpenAI GPT, or even your custom LiteLLM proxy for personalized discovery.</p>
+        </div>
+        <div class="feature-card">
+            <div class="feature-icon">📱</div>
+            <h3>Beautiful Library</h3>
+            <p>A fast, native interface designed to make browsing massive libraries a joy. From large album art grids to clean artist lists and a unified mini-player that follows you everywhere.</p>
+        </div>
+        <div class="feature-card">
+            <div class="feature-icon">☁️</div>
+            <h3>Navidrome First</h3>
+            <p>Connects securely to any Subsonic-API compatible server. Flacify was built from the ground up to be the ultimate companion for self-hosters.</p>
+        </div>
+    </div>
+
+    <div class="footer">
+        &copy; 2026 Flacify. Crafted for audio purists. &bull; <a href="/privacy/">Privacy Policy</a>
+    </div>
+
+</body>
+</html>
