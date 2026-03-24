@@ -1,4 +1,6 @@
-class Song {
+import 'package:equatable/equatable.dart';
+
+class Song extends Equatable {
   final String id;
   final String title;
   final String artist;
@@ -26,6 +28,9 @@ class Song {
     this.bitRate,
     this.suffix,
   });
+
+  @override
+  List<Object?> get props => [id, title, artist, artistId, album, albumId, coverArtId, duration, year, genre, bitRate, suffix];
 
   factory Song.fromJson(Map<String, dynamic> j) => Song(
         id: j['id'],

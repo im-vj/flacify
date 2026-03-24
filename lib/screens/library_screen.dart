@@ -37,38 +37,40 @@ class LibraryScreen extends ConsumerWidget {
                   return playlistsAsync.when(
                     loading: () => const Center(child: CircularProgressIndicator()),
                     error: (e, _) => Center(child: Text('Error: $e')),
-                    data: (playlists) => ListView.builder(
-                      scrollDirection: Axis.horizontal,
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                      itemCount: playlists.length,
-                      itemBuilder: (context, index) {
-                        final p = playlists[index];
-                        return GestureDetector(
-                          onTap: () => Navigator.push(
-                            context,
-                            MaterialPageRoute(builder: (_) => PlaylistScreen(playlist: p)),
-                          ),
-                          child: Container(
-                            width: 120,
-                            margin: const EdgeInsets.only(right: 12),
-                            decoration: BoxDecoration(
-                              color: const Color(0xFF160033),
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                const Icon(Icons.queue_music_rounded, size: 40, color: Color(0xFF00F0FF)),
-                                const SizedBox(height: 8),
-                                Padding(
-                                  padding: const EdgeInsets.symmetric(horizontal: 8),
-                                  child: Text(p.name, textAlign: TextAlign.center, maxLines: 2, overflow: TextOverflow.ellipsis),
-                                ),
-                              ],
-                            ),
-                          ),
-                        );
-                      },
+                    data: (playlists) => RepaintBoundary(
+  child: ListView.builder(
+    scrollDirection: Axis.horizontal,
+    padding: const EdgeInsets.symmetric(horizontal: 16),
+    itemCount: playlists.length,
+    itemBuilder: (context, index) {
+      final p = playlists[index];
+      return GestureDetector(
+        onTap: () => Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => PlaylistScreen(playlist: p)),
+        ),
+        child: Container(
+          width: 120,
+          margin: const EdgeInsets.only(right: 12),
+          decoration: BoxDecoration(
+            color: const Color(0xFF160033),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(Icons.queue_music_rounded, size: 40, color: Color(0xFF00F0FF)),
+              const SizedBox(height: 8),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 8),
+                child: Text(p.name, textAlign: TextAlign.center, maxLines: 2, overflow: TextOverflow.ellipsis),
+              ),
+            ],
+          ),
+        ),
+      );
+    },
+  ),
                     ),
                   );
                 },

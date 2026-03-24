@@ -17,10 +17,12 @@ class AlbumCard extends ConsumerWidget {
     this.compact = false,
   });
 
+  int get _coverSize => compact ? 128 : 256;
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final navidrome = ref.read(navidromeServiceProvider);
-    final coverUrl = navidrome?.coverArtUrl(album.coverArtId) ?? '';
+    final coverUrl = navidrome?.coverArtUrl(album.coverArtId, size: _coverSize) ?? '';
 
     return GestureDetector(
       onTap: onTap,
@@ -38,6 +40,8 @@ class AlbumCard extends ConsumerWidget {
                           imageUrl: coverUrl,
                           fit: BoxFit.cover,
                           width: double.infinity,
+                          memCacheHeight: _coverSize,
+                          memCacheWidth: _coverSize,
                           placeholder: (_, __) => Container(
                             color: Colors.white.withValues(alpha: 0.08),
                             child: const Icon(Icons.album_rounded, color: Colors.white24, size: 48),

@@ -1,4 +1,6 @@
-class Album {
+import 'package:equatable/equatable.dart';
+
+class Album extends Equatable {
   final String id;
   final String name;
   final String artist;
@@ -18,6 +20,9 @@ class Album {
     required this.songCount,
     this.genre,
   });
+
+  @override
+  List<Object?> get props => [id, name, artist, artistId, coverArtId, year, songCount, genre];
 
   factory Album.fromJson(Map<String, dynamic> j) => Album(
         id: j['id'],

@@ -5,6 +5,7 @@ import '../models/album.dart';
 import '../providers/navidrome_provider.dart';
 import '../providers/player_provider.dart';
 import '../widgets/song_tile.dart';
+import '../widgets/mini_player_wrapper.dart';
 
 class AlbumScreen extends ConsumerWidget {
   final Album album;
@@ -15,10 +16,11 @@ class AlbumScreen extends ConsumerWidget {
     final songs = ref.watch(albumSongsProvider(album.id));
     final navidrome = ref.read(navidromeServiceProvider);
     final player = ref.read(playerProvider.notifier);
-    final coverUrl = navidrome?.coverArtUrl(album.coverArtId) ?? '';
+    final coverUrl = navidrome?.highResCoverArtUrl(album.coverArtId) ?? '';
 
-    return Scaffold(
-      body: CustomScrollView(
+    return MiniPlayerWrapper(
+      child: Scaffold(
+        body: CustomScrollView(
         slivers: [
           SliverAppBar(
             expandedHeight: 300,
@@ -121,6 +123,7 @@ class AlbumScreen extends ConsumerWidget {
             ),
           ),
         ],
+      ),
       ),
     );
   }

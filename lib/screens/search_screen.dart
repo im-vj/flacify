@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../providers/navidrome_provider.dart';
 import '../providers/player_provider.dart';
 import '../widgets/song_tile.dart';
+import '../widgets/mini_player_wrapper.dart';
 
 class SearchScreen extends ConsumerStatefulWidget {
   const SearchScreen({super.key});
@@ -20,8 +21,10 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
     final results = ref.watch(searchProvider(_query));
     final player = ref.read(playerProvider.notifier);
 
-    return SafeArea(
-      child: Column(
+    return MiniPlayerWrapper(
+      child: Scaffold(
+        body: SafeArea(
+          child: Column(
         children: [
           Padding(
             padding: const EdgeInsets.all(16),
@@ -67,6 +70,8 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
             ),
           ),
         ],
+          ),
+        ),
       ),
     );
   }

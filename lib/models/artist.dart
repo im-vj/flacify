@@ -1,4 +1,6 @@
-class Artist {
+import 'package:equatable/equatable.dart';
+
+class Artist extends Equatable {
   final String id;
   final String name;
   final String? coverArtId;
@@ -10,6 +12,9 @@ class Artist {
     this.coverArtId,
     required this.albumCount,
   });
+
+  @override
+  List<Object?> get props => [id, name, coverArtId, albumCount];
 
   factory Artist.fromJson(Map<String, dynamic> j) => Artist(
         id: j['id'],

@@ -5,14 +5,14 @@ import '../models/song.dart';
 import '../providers/navidrome_provider.dart';
 import '../providers/trending_provider.dart';
 import '../providers/player_provider.dart';
-import '../widgets/album_card.dart';
-import '../widgets/mini_player.dart';
-import 'album_screen.dart';
+import '../services/itunes_service.dart';
+import '../widgets/common_widgets.dart';
 import 'search_screen.dart';
-import 'player_screen.dart';
-import 'library_screen.dart';
 import 'settings_screen.dart';
-import 'radio_screen.dart';
+import 'songs_screen.dart';
+import 'artists_screen.dart';
+import 'albums_screen.dart';
+import '../widgets/mini_player_wrapper.dart';
 
 class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
@@ -26,38 +26,16 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
   final _tabs = const [
     _HomeTab(),
-    SearchScreen(),
-    LibraryScreen(),
-    RadioScreen(),
+    SongsScreen(),
+    ArtistsScreen(),
+    AlbumsScreen(),
+    SettingsScreen(),
   ];
 
   @override
   Widget build(BuildContext context) {
-    final playerState = ref.watch(playerProvider);
-    final player = ref.read(playerProvider.notifier);
-
     return Scaffold(
-      body: Stack(
-        children: [
-          _tabs[_tab],
-          if (playerState.queue.isNotEmpty)
-            Positioned(
-              left: 12,
-              right: 12,
-              bottom: 12,
-              child: MiniPlayer(
-                song: player.currentSong!,
-                isPlaying: playerState.isPlaying,
-                onTap: () => Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (_) => const PlayerScreen()),
-                ),
-                onToggle: () => player.togglePlay(),
-                onNext: () => player.next(),
-              ),
-            ),
-        ],
-      ),
+      body: MiniPlayerWrapper(child: _tabs[_tab]),
       bottomNavigationBar: _ChoraBottomNav(
         selectedIndex: _tab,
         onDestinationSelected: (i) => setState(() => _tab = i),
@@ -80,9 +58,10 @@ class _ChoraBottomNav extends StatelessWidget {
   Widget build(BuildContext context) {
     const items = [
       (icon: Icons.home_rounded, label: 'Home'),
-      (icon: Icons.search_rounded, label: 'Search'),
-      (icon: Icons.library_music_rounded, label: 'Library'),
-      (icon: Icons.radio_rounded, label: 'Radio'),
+      (icon: Icons.music_note_rounded, label: 'Songs'),
+      (icon: Icons.person_rounded, label: 'Artists'),
+      (icon: Icons.album_rounded, label: 'Albums'),
+      (icon: Icons.settings_rounded, label: 'Settings'),
     ];
 
     return Container(
@@ -142,18 +121,58 @@ class _ChoraBottomNav extends StatelessWidget {
 class _HomeTab extends ConsumerWidget {
   const _HomeTab();
 
+  Future<void> _refresh(WidgetRef ref) async {
+    invalidateAllCaches(ref);
+    final country = ref.read(selectedChartCountryProvider);
+    ref.invalidate(trendingSongsProvider(country));
+    ref.invalidate(recommendedSongsByCountryProvider(country));
+    ref.invalidate(recommendedSongsProvider);
+  }
+
   Widget _buildSectionTitle(BuildContext context, String title) {
-    return SliverPadding(
-      padding: const EdgeInsets.fromLTRB(16, 24, 16, 8),
-      sliver: SliverToBoxAdapter(
-        child: Text(
-          title,
-          style: const TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.w700,
-            color: Colors.white,
-            letterSpacing: -0.3,
-          ),
+    return SectionTitle(title);
+  }
+
+  Widget _buildCountrySelector(WidgetRef ref) {
+    final selectedCountry = ref.watch(selectedChartCountryProvider);
+    return SliverToBoxAdapter(
+      child: SizedBox(
+        height: 44,
+        child: ListView.separated(
+          scrollDirection: Axis.horizontal,
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          itemCount: topChartCountries.length,
+          separatorBuilder: (_, __) => const SizedBox(width: 8),
+          itemBuilder: (context, index) {
+            final country = topChartCountries[index];
+            final isSelected = selectedCountry == country.code;
+            return GestureDetector(
+              onTap: () => ref.read(selectedChartCountryProvider.notifier).state = country.code,
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 180),
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                decoration: BoxDecoration(
+                  color: isSelected
+                      ? const Color(0xFF00F0FF).withValues(alpha: 0.16)
+                      : Colors.white.withValues(alpha: 0.06),
+                  borderRadius: BorderRadius.circular(999),
+                  border: Border.all(
+                    color: isSelected
+                        ? const Color(0xFF00F0FF).withValues(alpha: 0.8)
+                        : Colors.white.withValues(alpha: 0.1),
+                  ),
+                ),
+                child: Text(
+                  country.name,
+                  style: TextStyle(
+                    color: isSelected ? Colors.white : Colors.white70,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            );
+          },
         ),
       ),
     );
@@ -163,15 +182,15 @@ class _HomeTab extends ConsumerWidget {
     final player = ref.read(playerProvider.notifier);
     return songsAsync.when(
       loading: () => const SliverToBoxAdapter(
-        child: SizedBox(height: 180, child: Center(child: CircularProgressIndicator(color: Colors.white38))),
+        child: SizedBox(height: 180, child: LoadingIndicator()),
       ),
       error: (e, _) => SliverToBoxAdapter(
-        child: SizedBox(height: 100, child: Center(child: Text('Error: $e', style: const TextStyle(color: Colors.white38)))),
+        child: SizedBox(height: 100, child: ErrorDisplay(e)),
       ),
       data: (songs) {
         if (songs.isEmpty) {
           return const SliverToBoxAdapter(
-            child: SizedBox(height: 100, child: Center(child: Text('No songs', style: TextStyle(color: Colors.white38)))),
+            child: SizedBox(height: 100, child: EmptyState(message: 'No songs')),
           );
         }
         return SliverToBoxAdapter(
@@ -202,7 +221,12 @@ class _HomeTab extends ConsumerWidget {
                               child: AspectRatio(
                                 aspectRatio: 1,
                                 child: coverUrl.isNotEmpty
-                                    ? CachedNetworkImage(imageUrl: coverUrl, fit: BoxFit.cover)
+                                    ? CachedNetworkImage(
+                                        imageUrl: coverUrl,
+                                        fit: BoxFit.cover,
+                                        memCacheHeight: 300,
+                                        memCacheWidth: 300,
+                                      )
                                     : Container(
                                         color: Colors.white10,
                                         child: const Icon(Icons.music_note_rounded, color: Colors.white24, size: 40)),
@@ -248,16 +272,200 @@ class _HomeTab extends ConsumerWidget {
     );
   }
 
+  Widget _buildTopSongsList(AsyncValue<List<ItunesSong>> songsAsync, WidgetRef ref) {
+    final player = ref.read(playerProvider.notifier);
+    return songsAsync.when(
+      loading: () => const SliverToBoxAdapter(
+        child: SizedBox(height: 240, child: LoadingIndicator()),
+      ),
+      error: (e, _) => SliverToBoxAdapter(
+        child: SizedBox(height: 120, child: ErrorDisplay(e)),
+      ),
+      data: (songs) {
+        if (songs.isEmpty) {
+          return const SliverToBoxAdapter(
+            child: SizedBox(height: 120, child: EmptyState(message: 'No Apple chart songs available')),
+          );
+        }
+
+        final topSongs = songs.take(10).toList();
+        return SliverPadding(
+          padding: const EdgeInsets.fromLTRB(16, 4, 16, 120),
+          sliver: SliverList(
+            delegate: SliverChildBuilderDelegate(
+              (context, index) {
+                final song = topSongs[index];
+                final rank = (index + 1).toString().padLeft(2, '0');
+
+                return GestureDetector(
+                  onTap: () async {
+                    final navidrome = ref.read(navidromeServiceProvider);
+                    if (navidrome == null) return;
+
+                    try {
+                      final query = '${song.title} ${song.artist}';
+                      final results = await navidrome.search(query);
+                      if (results.isNotEmpty) {
+                        await player.playSong(results.first);
+                      } else if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('Song not found in your library'),
+                            backgroundColor: Colors.orange,
+                          ),
+                        );
+                      }
+                    } catch (_) {
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('Could not search your library'),
+                            backgroundColor: Colors.red,
+                          ),
+                        );
+                      }
+                    }
+                  },
+                  child: Container(
+                    margin: const EdgeInsets.only(bottom: 10),
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF121226),
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(color: Colors.white.withValues(alpha: 0.06)),
+                    ),
+                    child: Row(
+                      children: [
+                        SizedBox(
+                          width: 28,
+                          child: Text(
+                            rank,
+                            style: const TextStyle(
+                              color: Colors.white60,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w700,
+                              letterSpacing: 1.0,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(10),
+                          child: SizedBox(
+                            width: 54,
+                            height: 54,
+                            child: song.imageUrl.isNotEmpty
+                                ? CachedNetworkImage(
+                                    imageUrl: song.imageUrl,
+                                    fit: BoxFit.cover,
+                                    memCacheHeight: 150,
+                                    memCacheWidth: 150,
+                                  )
+                                : Container(
+                                    color: Colors.white10,
+                                    child: const Icon(Icons.music_note_rounded, color: Colors.white24),
+                                  ),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                song.title,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                song.artist,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(color: Colors.white54, fontSize: 12),
+                              ),
+                            ],
+                          ),
+                        ),
+                        IconButton(
+                          onPressed: () async {
+                            final navidrome = ref.read(navidromeServiceProvider);
+                            if (navidrome == null) return;
+
+                            try {
+                              final query = '${song.title} ${song.artist}';
+                              final results = await navidrome.search(query);
+                              if (results.isNotEmpty) {
+                                await player.queueLast(results.first);
+                                if (context.mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                      content: Text('Added to queue'),
+                                      backgroundColor: Colors.green,
+                                    ),
+                                  );
+                                }
+                              } else if (context.mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text('Song not found in your library'),
+                                    backgroundColor: Colors.orange,
+                                  ),
+                                );
+                              }
+                            } catch (_) {
+                              if (context.mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text('Could not add song to queue'),
+                                    backgroundColor: Colors.red,
+                                  ),
+                                );
+                              }
+                            }
+                          },
+                          icon: const Icon(Icons.add_circle_outline_rounded, color: Colors.white54),
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              },
+              childCount: topSongs.length,
+            ),
+          ),
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final albums = ref.watch(albumsProvider);
     final recommended = ref.watch(recommendedSongsProvider);
     final recentlyAdded = ref.watch(starredProvider);
+    final selectedCountry = ref.watch(selectedChartCountryProvider);
+    final topSongs = ref.watch(trendingSongsProvider(selectedCountry));
+    final countryName = topChartCountries
+        .firstWhere(
+          (c) => c.code == selectedCountry,
+          orElse: () => const ChartCountry(code: 'us', name: 'USA'),
+        )
+        .name;
     final server = ref.watch(activeServerProvider);
     final username = server?.username ?? 'Music Lover';
 
-    return CustomScrollView(
-      slivers: [
+    return RefreshIndicator(
+      onRefresh: () => _refresh(ref),
+      color: Colors.white,
+      backgroundColor: Colors.white12,
+      child: CustomScrollView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        slivers: [
         // Chora-style greeting header
         SliverToBoxAdapter(
           child: Padding(
@@ -293,10 +501,10 @@ class _HomeTab extends ConsumerWidget {
                   ),
                 ),
                 IconButton(
-                  icon: const Icon(Icons.settings_outlined, color: Colors.white54, size: 26),
+                  icon: const Icon(Icons.search_rounded, color: Colors.white54, size: 26),
                   onPressed: () => Navigator.push(
                     context,
-                    MaterialPageRoute(builder: (_) => const SettingsScreen()),
+                    MaterialPageRoute(builder: (_) => const SearchScreen()),
                   ),
                 ),
               ],
@@ -310,39 +518,12 @@ class _HomeTab extends ConsumerWidget {
         _buildSectionTitle(context, 'Recently Added'),
         _buildHorizontalSongList(recentlyAdded, ref),
 
-        _buildSectionTitle(context, 'Albums'),
-        albums.when(
-          loading: () => const SliverFillRemaining(
-            child: Center(child: CircularProgressIndicator(color: Colors.white38)),
-          ),
-          error: (e, _) => SliverFillRemaining(
-            child: Center(child: Text('Error: $e', style: const TextStyle(color: Colors.white38))),
-          ),
-          data: (list) => SliverPadding(
-            padding: const EdgeInsets.fromLTRB(16, 0, 16, 120),
-            sliver: SliverGrid(
-              // Chora-style 3-column grid
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 3,
-                crossAxisSpacing: 10,
-                mainAxisSpacing: 10,
-                childAspectRatio: 0.78,
-              ),
-              delegate: SliverChildBuilderDelegate(
-                (ctx, i) => AlbumCard(
-                  album: list[i],
-                  compact: true,
-                  onTap: () => Navigator.push(
-                    ctx,
-                    MaterialPageRoute(builder: (_) => AlbumScreen(album: list[i])),
-                  ),
-                ),
-                childCount: list.length,
-              ),
-            ),
-          ),
-        ),
+        _buildSectionTitle(context, 'Top Songs - $countryName'),
+        _buildCountrySelector(ref),
+        const SliverToBoxAdapter(child: SizedBox(height: 8)),
+        _buildTopSongsList(topSongs, ref),
       ],
+      ),
     );
   }
 }

@@ -29,10 +29,12 @@ dependencies:
   # Storage
   hive_flutter: ^1.1.0
   hive: ^2.2.3
+  flutter_secure_storage: ^9.2.2
 
   # Misc
   equatable: ^2.0.5
   path_provider: ^2.1.5
+  permission_handler: ^11.0.1
 
 dev_dependencies:
   flutter_test:
@@ -45,9 +47,9 @@ dev_dependencies:
 flutter_launcher_icons:
   android: true
   ios: true
-  image_path: "/home/ubuntu/.gemini/antigravity/brain/ea1de138-1280-4888-aee6-3e4d11e971a5/flacify_logo_1773943525050.png"
+  image_path: "assets/icons/app_icon.png"
   adaptive_icon_background: "#000000"
-  adaptive_icon_foreground: "/home/ubuntu/.gemini/antigravity/brain/ea1de138-1280-4888-aee6-3e4d11e971a5/flacify_logo_1773943525050.png"
+  adaptive_icon_foreground: "assets/icons/app_icon_foreground.png"
 
 flutter:
   uses-material-design: true

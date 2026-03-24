@@ -26,7 +26,7 @@ class MiniPlayer extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final navidrome = ref.read(navidromeServiceProvider);
     final playerState = ref.watch(playerProvider);
-    final coverUrl = navidrome?.coverArtUrl(song.coverArtId, size: 128) ?? '';
+    final coverUrl = navidrome?.coverArtUrl(song.coverArtId, size: 128) ?? ''; // Already optimized to 128
 
     final progress = playerState.duration.inMilliseconds > 0
         ? playerState.position.inMilliseconds /

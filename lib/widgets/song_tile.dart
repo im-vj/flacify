@@ -54,6 +54,8 @@ class SongTile extends ConsumerWidget {
                       width: 44,
                       height: 44,
                       fit: BoxFit.cover,
+                      memCacheHeight: 128,
+                      memCacheWidth: 128,
                       errorWidget: (_, __, ___) => Container(
                         width: 44,
                         height: 44,

@@ -5,12 +5,22 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK"/>
 
+    <!-- Optional: For downloading to external storage (Android < 10) -->
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"
+        android:maxSdkVersion="28" />
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"
+        android:maxSdkVersion="28" />
+
+    <!-- For Android 10+ file access (uses Scoped Storage) -->
+    <uses-permission android:name="android.permission.ACCESS_MEDIA_LOCATION" />
+
     <application
-        android:label="flacify"
+        android:label="Flacify"
         android:name="${applicationName}"
-        android:icon="@mipmap/ic_launcher">
+        android:icon="@mipmap/ic_launcher"
+        android:networkSecurityConfig="@xml/network_security_config">
         <activity
-            android:name=".MainActivity"
+            android:name="com.ryanheise.audioservice.AudioServiceActivity"
             android:exported="true"
             android:launchMode="singleTop"
             android:taskAffinity=""
@@ -30,6 +40,9 @@
         <meta-data
             android:name="flutterEmbedding"
             android:value="2" />
+        <meta-data
+            android:name="com.ryanheise.audioservice.NOTIFICATION_ICON"
+            android:resource="@mipmap/ic_launcher"/>
             
         <receiver android:name="com.ryanheise.audioservice.MediaButtonReceiver"
                   android:exported="true">
@@ -48,6 +61,7 @@
 
         <meta-data android:name="com.google.android.gms.car.application"
                    android:resource="@xml/automotive_app_desc"/>
+
     </application>
     <queries>
         <intent>

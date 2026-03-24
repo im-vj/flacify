@@ -1,0 +1,20 @@
+version: '3.8'
+
+services:
+  flacify-privacy:
+    build: .
+    container_name: flacify-privacy
+    restart: unless-stopped
+    networks:
+      - traefik-public # Change this to your Traefik network name
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.flacify-privacy.rule=Host(`flacify.imvj.in`)"
+      - "traefik.http.routers.flacify-privacy.entrypoints=websecure"
+      - "traefik.http.routers.flacify-privacy.tls=true"
+      - "traefik.http.routers.flacify-privacy.tls.certresolver=myresolver"
+      - "traefik.http.services.flacify-privacy.loadbalancer.server.port=80"
+
+networks:
+  traefik-public:
+    external: true

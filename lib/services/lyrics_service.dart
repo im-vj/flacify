@@ -38,10 +38,11 @@ class LyricsService {
   List<LyricLine> _parseLrc(String lrc) {
     final lines = <LyricLine>[];
     for (final line in lrc.split('\n')) {
-      final match = RegExp(r'\[(\d+):(\d+\.\d+)\](.*)').firstMatch(line);
+      final match = RegExp(r'\[(\d+):([\d\.:]+)\](.*)').firstMatch(line);
       if (match == null) continue;
       final minutes = int.parse(match.group(1)!);
-      final seconds = double.parse(match.group(2)!);
+      final secStr = match.group(2)!.replaceAll(':', '.');
+      final seconds = double.parse(secStr);
       final ms = ((minutes * 60 + seconds) * 1000).toInt();
       lines.add(LyricLine(timeMs: ms, text: match.group(3)!.trim()));
     }
